@@ -12,8 +12,11 @@ type TransportType string
 
 const (
 	// TransportHTTP uses Server-Sent Events (SSE) for OpenShift Lightspeed integration
+	// This is the ONLY supported transport as of 2025-12-17
 	TransportHTTP TransportType = "http"
 	// TransportStdio uses standard input/output for local development (Claude Desktop)
+	// DEPRECATED: stdio transport is no longer supported as of 2025-12-17
+	// Use HTTP transport for all use cases including local development
 	TransportStdio TransportType = "stdio"
 )
 
@@ -50,7 +53,8 @@ type Config struct {
 // NewConfig creates a Config from environment variables with sensible defaults
 func NewConfig() *Config {
 	cfg := &Config{
-		// Transport (default: HTTP for OpenShift)
+		// Transport (default: HTTP for OpenShift Lightspeed)
+		// stdio transport DEPRECATED as of 2025-12-17
 		Transport: getEnvTransport("MCP_TRANSPORT", TransportHTTP),
 
 		// HTTP Settings

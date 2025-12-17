@@ -114,51 +114,89 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 func (s *MCPServer) registerTools() error {
 	// Register cluster health tool (with cache)
 	clusterHealthTool := tools.NewClusterHealthTool(s.k8sClient, s.cache)
-	s.tools[clusterHealthTool.Name()] = clusterHealthTool
-	log.Printf("Registered tool: %s - %s", clusterHealthTool.Name(), clusterHealthTool.Description())
+	s.registerTool(clusterHealthTool)
 
 	// Register list-pods tool (no cache - results change frequently)
 	listPodsTool := tools.NewListPodsTool(s.k8sClient)
-	s.tools[listPodsTool.Name()] = listPodsTool
-	log.Printf("Registered tool: %s - %s", listPodsTool.Name(), listPodsTool.Description())
+	s.registerTool(listPodsTool)
 
 	// Register Coordination Engine tools if enabled
 	if s.ceClient != nil {
-		// Register list-incidents tool
 		listIncidentsTool := tools.NewListIncidentsTool(s.ceClient)
-		s.tools[listIncidentsTool.Name()] = listIncidentsTool
-		log.Printf("Registered tool: %s - %s", listIncidentsTool.Name(), listIncidentsTool.Description())
+		s.registerTool(listIncidentsTool)
 
-		// Register trigger-remediation tool
 		triggerRemediationTool := tools.NewTriggerRemediationTool(s.ceClient)
-		s.tools[triggerRemediationTool.Name()] = triggerRemediationTool
-		log.Printf("Registered tool: %s - %s", triggerRemediationTool.Name(), triggerRemediationTool.Description())
+		s.registerTool(triggerRemediationTool)
 	} else {
 		log.Printf("Skipping Coordination Engine tools (not enabled)")
 	}
 
 	// Register KServe tools if enabled
 	if s.kserve != nil {
-		// Register analyze-anomalies tool
 		analyzeAnomaliesTool := tools.NewAnalyzeAnomaliesTool(s.kserve)
-		s.tools[analyzeAnomaliesTool.Name()] = analyzeAnomaliesTool
-		log.Printf("Registered tool: %s - %s", analyzeAnomaliesTool.Name(), analyzeAnomaliesTool.Description())
+		s.registerTool(analyzeAnomaliesTool)
 
-		// Register get-model-status tool
 		getModelStatusTool := tools.NewGetModelStatusTool(s.kserve)
-		s.tools[getModelStatusTool.Name()] = getModelStatusTool
-		log.Printf("Registered tool: %s - %s", getModelStatusTool.Name(), getModelStatusTool.Description())
+		s.registerTool(getModelStatusTool)
+
+		listModelsTool := tools.NewListModelsTool(s.kserve)
+		s.registerTool(listModelsTool)
 	} else {
 		log.Printf("Skipping KServe tools (not enabled)")
 	}
 
-	// Future tools will be registered here:
-	// - get-pod-logs
-	// - get-events
-	// etc.
-
 	log.Printf("Total tools registered: %d", len(s.tools))
 	return nil
+}
+
+// Tool interface that our tools implement
+type Tool interface {
+	Name() string
+	Description() string
+	InputSchema() map[string]interface{}
+	Execute(ctx context.Context, args map[string]interface{}) (interface{}, error)
+}
+
+// registerTool registers a tool with both our internal map and the MCP SDK
+func (s *MCPServer) registerTool(tool Tool) {
+	// Store in our internal map
+	s.tools[tool.Name()] = tool
+
+	// Create MCP tool definition
+	mcpTool := &mcp.Tool{
+		Name:        tool.Name(),
+		Description: tool.Description(),
+		InputSchema: tool.InputSchema(),
+	}
+
+	// Create handler function that wraps our tool's Execute method
+	handler := func(ctx context.Context, req *mcp.CallToolRequest, params map[string]interface{}) (*mcp.CallToolResult, any, error) {
+		// Execute the tool (params contains the arguments)
+		result, err := tool.Execute(ctx, params)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Convert result to JSON string for MCP response
+		resultJSON, err := json.Marshal(result)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to marshal result: %w", err)
+		}
+
+		// Return as MCP CallToolResult
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: string(resultJSON),
+				},
+			},
+		}, nil, nil
+	}
+
+	// Register with MCP SDK
+	mcp.AddTool(s.mcpServer, mcpTool, handler)
+
+	log.Printf("Registered tool: %s - %s", tool.Name(), tool.Description())
 }
 
 // registerResources initializes and registers all MCP resources
@@ -197,14 +235,16 @@ func (s *MCPServer) GetResources() map[string]interface{} {
 }
 
 // Start begins serving MCP requests using the configured transport
+// As of 2025-12-17, only HTTP/SSE transport is supported (stdio DEPRECATED)
 func (s *MCPServer) Start(ctx context.Context) error {
 	switch s.config.Transport {
 	case TransportHTTP:
 		return s.startHTTPTransport(ctx)
 	case TransportStdio:
+		// stdio transport DEPRECATED - return error
 		return s.startStdioTransport(ctx)
 	default:
-		return fmt.Errorf("unsupported transport: %s", s.config.Transport)
+		return fmt.Errorf("unsupported transport: %s (only 'http' is supported)", s.config.Transport)
 	}
 }
 
@@ -213,52 +253,53 @@ func (s *MCPServer) startHTTPTransport(ctx context.Context) error {
 	addr := s.config.GetHTTPAddr()
 	log.Printf("Starting HTTP transport on %s", addr)
 
-	// Create HTTP server with MCP handler
-	mux := http.NewServeMux()
+	// Create the MCP SSE handler (handles SSE transport for OpenShift Lightspeed compatibility)
+	// OpenShift Lightspeed expects SSE transport at the root endpoint
+	// Reference: https://github.com/openshift/lightspeed-service/
+	mcpHandler := mcp.NewSSEHandler(func(req *http.Request) *mcp.Server {
+		return s.mcpServer
+	}, nil)
 
-	// MCP endpoint (using SSE transport)
-	mux.HandleFunc("/mcp", s.handleMCPInfo)
-
-	// Tools endpoints
-	mux.HandleFunc("/mcp/tools", s.handleListTools)
-	mux.HandleFunc("/mcp/tools/get-cluster-health/call", s.handleClusterHealthTool)
-	mux.HandleFunc("/mcp/tools/list-pods/call", s.handleListPodsTool)
-	mux.HandleFunc("/mcp/tools/list-incidents/call", s.handleListIncidentsTool)
-	mux.HandleFunc("/mcp/tools/trigger-remediation/call", s.handleTriggerRemediationTool)
-	mux.HandleFunc("/mcp/tools/analyze-anomalies/call", s.handleAnalyzeAnomaliesTool)
-	mux.HandleFunc("/mcp/tools/get-model-status/call", s.handleGetModelStatusTool)
-
-	// Resources endpoints
-	mux.HandleFunc("/mcp/resources", s.handleListResources)
-	mux.HandleFunc("/mcp/resources/cluster/health", s.handleClusterHealthResource)
-	mux.HandleFunc("/mcp/resources/cluster/nodes", s.handleNodesResource)
-	mux.HandleFunc("/mcp/resources/cluster/incidents", s.handleIncidentsResource)
-
-	// Health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "OK")
-	})
-
-	// Readiness check
-	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "READY")
-	})
-
-	// Cache statistics endpoint
-	mux.HandleFunc("/cache/stats", s.handleCacheStats)
-
-	// Metrics endpoint (Prometheus)
-	mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		// TODO: Implement Prometheus metrics in Phase 3
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "# Metrics endpoint (Phase 3)\n")
+	// Create custom handler that routes to either MCP or health endpoints
+	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Route specific endpoints to their handlers
+		switch r.URL.Path {
+		case "/health":
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "OK")
+			return
+		case "/ready":
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "READY")
+			return
+		case "/metrics":
+			// TODO: Implement Prometheus metrics in Phase 3
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "# Metrics endpoint (Phase 3)\n")
+			return
+		case "/cache/stats":
+			s.handleCacheStats(w, r)
+			return
+		case "/mcp/info":
+			s.handleMCPInfo(w, r)
+			return
+		case "/mcp/tools":
+			s.handleListTools(w, r)
+			return
+		case "/mcp/resources":
+			s.handleListResources(w, r)
+			return
+		default:
+			// All other paths go to MCP handler (including root "/")
+			// This supports GET (SSE) and POST (messages) for MCP protocol
+			log.Printf("Routing %s %s to MCP handler", r.Method, r.URL.Path)
+			mcpHandler.ServeHTTP(w, r)
+		}
 	})
 
 	s.httpServer = &http.Server{
 		Addr:    addr,
-		Handler: mux,
+		Handler: mainHandler,
 	}
 
 	// Start server in goroutine
@@ -280,19 +321,56 @@ func (s *MCPServer) startHTTPTransport(ctx context.Context) error {
 	}
 }
 
-// startStdioTransport starts the server with stdio transport (for local dev)
+// startStdioTransport is DEPRECATED as of 2025-12-17
+// stdio transport is no longer supported - use HTTP/SSE transport instead
 func (s *MCPServer) startStdioTransport(ctx context.Context) error {
-	log.Println("Starting stdio transport (for local development)")
+	log.Println("ERROR: stdio transport is DEPRECATED as of 2025-12-17")
+	log.Println("Please use HTTP/SSE transport instead:")
+	log.Println("  MCP_TRANSPORT=http ./mcp-server")
+	log.Println("")
+	log.Println("Rationale for deprecation:")
+	log.Println("  - Primary use case is OpenShift Lightspeed integration via HTTP/SSE")
+	log.Println("  - Local development works fine with HTTP transport")
+	log.Println("  - stdio was never fully implemented (stub only)")
+	log.Println("  - Reduces codebase complexity and maintenance burden")
 
-	// The official SDK uses stdio by default
-	// Running the server with nil transport uses stdio
-	// TODO: Verify exact stdio API in Phase 1.3
-	log.Println("TODO: Implement stdio transport using official SDK API")
-	log.Println("For now, use HTTP transport for testing")
+	return fmt.Errorf("stdio transport is DEPRECATED - use HTTP transport (MCP_TRANSPORT=http)")
+}
 
-	// Block until context is cancelled
-	<-ctx.Done()
-	return nil
+// handleRoot provides MCP server discovery at the root path
+func (s *MCPServer) handleRoot(w http.ResponseWriter, r *http.Request) {
+	// Only handle exact root path, let other paths fall through
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	response := map[string]interface{}{
+		"name":        s.config.Name,
+		"version":     s.config.Version,
+		"description": "OpenShift Cluster Health MCP Server - AI Ops integration for cluster monitoring",
+		"protocol":    "mcp",
+		"transport":   "http",
+		"endpoints": map[string]string{
+			"mcp":       "/mcp",
+			"tools":     "/mcp/tools",
+			"resources": "/mcp/resources",
+			"health":    "/health",
+			"ready":     "/ready",
+			"metrics":   "/metrics",
+		},
+		"capabilities": map[string]interface{}{
+			"tools":     len(s.tools),
+			"resources": len(s.resources),
+		},
+	}
+
+	if err := writeJSON(w, response); err != nil {
+		log.Printf("Error writing JSON response: %v", err)
+	}
 }
 
 // handleMCPInfo returns server info

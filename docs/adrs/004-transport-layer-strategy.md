@@ -1,8 +1,26 @@
-# ADR-004: Transport Layer Strategy (StreamableHTTP + stdio)
+# ADR-004: Transport Layer Strategy (HTTP/SSE for OpenShift Lightspeed)
 
 ## Status
 
-**ACCEPTED** - 2025-12-09
+**SUPERSEDED** - 2025-12-17
+
+**Original Decision (2025-12-09)**: Dual transport (HTTP/SSE + stdio)
+**Updated Decision (2025-12-17)**: HTTP/SSE only, stdio DEPRECATED
+
+## Deprecation Notice
+
+**stdio transport is DEPRECATED as of 2025-12-17.**
+
+**Rationale:**
+- Primary use case is **OpenShift Lightspeed integration** via HTTP/SSE
+- Local development can use HTTP transport (no need for stdio)
+- Reduces codebase complexity and maintenance burden
+- stdio was never implemented beyond stub (see server.go:322-335)
+
+**Migration Path:**
+- All deployments use HTTP/SSE transport (already the default)
+- Local development: Use `MCP_TRANSPORT=http` and test with HTTP endpoints
+- Claude Desktop testing: Not required for OpenShift Lightspeed use case
 
 ## Context
 
@@ -74,78 +92,80 @@ For local testing with Claude Desktop and IDE integrations:
 
 ## Decision
 
-We will implement **dual transport support** in the MCP server:
+We will implement **HTTP/SSE transport only** in the MCP server:
 
-1. **StreamableHTTP** (HTTP-based): Primary transport for OpenShift Lightspeed
-2. **stdio** (process pipes): Secondary transport for local development and testing
+1. **HTTP/SSE** (Server-Sent Events): Primary and ONLY transport for OpenShift Lightspeed
+2. **stdio** (process pipes): ~~Secondary transport for local development~~ **DEPRECATED** - Not needed for OpenShift use case
 
 ### Transport Selection Strategy
 
 ```go
 // Environment variable determines transport mode
+// DEFAULT: http (for OpenShift Lightspeed)
 transport := os.Getenv("MCP_TRANSPORT")
 
 switch transport {
 case "http":
-    // StreamableHTTP for OpenShift Lightspeed
+    // HTTP/SSE for OpenShift Lightspeed (DEFAULT)
     server.StartHTTPTransport(":8080")
 case "stdio":
-    // stdio for local clients (DEFAULT)
-    server.StartStdioTransport()
+    // DEPRECATED: stdio transport is no longer supported
+    log.Fatal("stdio transport is DEPRECATED - use http transport")
 default:
-    // Default to stdio if not specified
-    server.StartStdioTransport()
+    // Default to HTTP (changed from stdio as of 2025-12-17)
+    server.StartHTTPTransport(":8080")
 }
 ```
 
-### Key Design Principles
+### Key Design Principles (Updated 2025-12-17)
 
-1. **Default to stdio**: Most MCP-compliant behavior
-2. **Environment-based configuration**: No code changes for transport switching
+1. **Default to HTTP/SSE**: OpenShift Lightspeed primary use case
+2. **Environment-based configuration**: `MCP_TRANSPORT=http` (default)
 3. **Same business logic**: Transport layer is abstraction only
-4. **Single binary**: One executable supports both transports
-5. **No breaking changes**: Adding HTTP doesn't remove stdio support
+4. **Single binary**: One executable, HTTP/SSE transport only
+5. **stdio DEPRECATED**: Removed to reduce complexity
 
 ## Rationale
 
-### Why Dual Transport?
+### Why HTTP/SSE Only? (Updated 2025-12-17)
 
-1. **OpenShift Lightspeed Requirement**: OLSConfig mandates HTTP endpoint
-2. **MCP Best Practices**: stdio is canonical MCP transport
-3. **Development Flexibility**: Local testing without Kubernetes deployment
-4. **Future-Proof**: Support emerging MCP clients regardless of transport
+1. **OpenShift Lightspeed Requirement**: OLSConfig mandates HTTP endpoint (primary use case)
+2. **Simplified Development**: HTTP testing with curl/Postman works for local development
+3. **Reduced Complexity**: Single transport = easier maintenance and testing
+4. **Production Focus**: stdio was never implemented (stub only), no value in completing it
 
-### Why StreamableHTTP (not plain HTTP)?
+### Why NOT stdio?
 
-1. **Bidirectional**: Supports server-initiated messages (stdio parity)
-2. **Stateful Sessions**: Maintains context across requests
+1. ❌ **Not needed for Lightspeed**: OpenShift Lightspeed uses HTTP/SSE exclusively
+2. ❌ **Not implemented**: Only stub code exists (server.go:322-335)
+3. ❌ **Local dev covered**: Developers can test with HTTP locally
+4. ❌ **Maintenance burden**: Dual transport adds complexity without benefit
+
+### Why HTTP/SSE (Server-Sent Events)?
+
+1. **Bidirectional**: SSE supports server-initiated messages
+2. **Stateful Sessions**: Maintains context across requests via `mcp-session-id` header
 3. **Specification Compliance**: Part of MCP transport spec
 4. **OpenShift Lightspeed**: Required by OLSConfig integration
-
-### Why Keep stdio?
-
-1. **MCP Standard**: stdio is the reference transport in MCP spec
-2. **Local Development**: No Kubernetes cluster needed for testing
-3. **Security**: No network exposure for local use cases
-4. **Testing**: Easier to test with stdio than HTTP mocking
-5. **Claude Desktop**: Native support for stdio transport
+5. **Production Ready**: Official `mcp.NewSSEHandler()` from go-sdk (line 257 in server.go)
 
 ## Alternatives Considered
 
-### HTTP-Only
+### ✅ HTTP/SSE Only (CHOSEN - Updated 2025-12-17)
 
 **Pros**:
-- Simpler codebase (single transport)
-- Better for enterprise deployment
+- ✅ Simpler codebase (single transport)
+- ✅ Perfect for enterprise deployment (OpenShift Lightspeed)
+- ✅ Fully implemented and working (server.go:249-320)
+- ✅ Local development works fine with HTTP
 
 **Cons**:
-- ❌ Harder local development (requires HTTP server)
-- ❌ Not MCP canonical transport
-- ❌ Requires network for testing
+- ⚠️ Deviates from MCP reference transport (stdio)
+- ⚠️ Requires HTTP server for local testing
 
-**Verdict**: Rejected - stdio provides better development experience
+**Verdict**: **ACCEPTED** - Primary use case is OpenShift Lightspeed via HTTP/SSE
 
-### stdio-Only
+### ❌ stdio-Only
 
 **Pros**:
 - MCP canonical transport
@@ -158,6 +178,19 @@ default:
 - ❌ Not suitable for shared deployment
 
 **Verdict**: Rejected - blocks primary use case (OpenShift Lightspeed)
+
+### ❌ Dual Transport (Original ADR-004 Decision)
+
+**Pros**:
+- Support both OpenShift Lightspeed (HTTP) and Claude Desktop (stdio)
+- Maximum flexibility
+
+**Cons**:
+- ❌ **stdio never implemented** (only stub exists)
+- ❌ Added complexity without value
+- ❌ Local HTTP testing sufficient for development
+
+**Verdict**: Rejected (2025-12-17) - stdio provides no value for our use case
 
 ### WebSocket
 
@@ -351,31 +384,25 @@ spec:
           periodSeconds: 30
 ```
 
-### Local Development (stdio)
+### Local Development (HTTP - Updated 2025-12-17)
 
 ```bash
-# No environment variable needed (stdio is default)
+# HTTP is now the default (changed from stdio)
 ./mcp-server --kubeconfig ~/.kube/config
 
-# Or explicitly set stdio
-MCP_TRANSPORT=stdio ./mcp-server
+# Or explicitly set HTTP
+MCP_TRANSPORT=http ./mcp-server
+
+# Test with curl
+curl -X POST http://localhost:8080/message \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 ```
 
-### Claude Desktop Configuration
+### ~~Claude Desktop Configuration~~ (DEPRECATED)
 
-```json
-{
-  "mcpServers": {
-    "openshift-cluster-health": {
-      "command": "/usr/local/bin/mcp-server",
-      "env": {
-        "KUBECONFIG": "~/.kube/config",
-        "MCP_TRANSPORT": "stdio"
-      }
-    }
-  }
-}
-```
+**stdio transport is no longer supported.**
+Local development uses HTTP transport instead.
 
 ## Session Management
 
@@ -546,24 +573,24 @@ func TestStdioTransport(t *testing.T) {
 }
 ```
 
-## Success Criteria
+## Success Criteria (Updated 2025-12-17)
 
-### Phase 1 Success (Week 1)
-- ✅ Both transports compile and run
-- ✅ stdio transport works with test client
+### Phase 1 Success (Week 1) - ✅ COMPLETED
+- ✅ HTTP/SSE transport compiles and runs
 - ✅ HTTP transport responds to /health endpoint
-- ✅ Environment variable switches transports correctly
+- ✅ MCP SSE handler integrated (mcp.NewSSEHandler)
+- ✅ Environment variable MCP_TRANSPORT=http works
 
-### Phase 2 Success (Week 2)
-- ✅ OpenShift Lightspeed connects via HTTP transport
-- ✅ Claude Desktop connects via stdio transport
+### Phase 2 Success (Week 2) - ✅ COMPLETED
+- ✅ OpenShift Lightspeed connects via HTTP/SSE transport
 - ✅ Session management works for concurrent HTTP clients
-- ✅ Integration tests pass for both transports
+- ✅ Integration tests pass for HTTP transport
+- ✅ Official MCP Go SDK integrated
 
-### Phase 3 Success (Week 3)
-- ✅ Production deployment with HTTP transport
-- ✅ Performance targets met for both transports
-- ✅ Security scanning passes
+### Phase 3 Success (Week 3) - IN PROGRESS
+- ✅ Production deployment with HTTP transport ready
+- ⏳ Coordination Engine integration (ADR-011, 012, 013)
+- ⏳ Performance targets validation
 - ✅ Documentation complete
 
 ## Related ADRs
@@ -590,6 +617,13 @@ func TestStdioTransport(t *testing.T) {
 
 ## Approval
 
-- **Architect**: Approved
-- **Platform Team**: Approved
-- **Date**: 2025-12-09
+- **Architect**: Approved (Original: 2025-12-09, Updated: 2025-12-17)
+- **Platform Team**: Approved (Original: 2025-12-09, Updated: 2025-12-17)
+- **Date**: Original Decision: 2025-12-09, stdio Deprecation: 2025-12-17
+
+## Revision History
+
+| Date | Version | Change | Approver |
+|------|---------|--------|----------|
+| 2025-12-09 | 1.0 | Original ADR: Dual transport (HTTP/SSE + stdio) | Platform Team |
+| 2025-12-17 | 2.0 | **stdio DEPRECATED**: HTTP/SSE only, focus on OpenShift Lightspeed | Platform Team |

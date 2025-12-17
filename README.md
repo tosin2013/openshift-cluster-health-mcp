@@ -73,8 +73,11 @@ make test
 # Build binary
 make build
 
-# Run locally (stdio transport)
-./bin/mcp-server
+# Run locally (HTTP transport - default)
+MCP_TRANSPORT=http ./bin/mcp-server
+
+# Test with curl
+curl http://localhost:8080/health
 ```
 
 ### Deploy to OpenShift
