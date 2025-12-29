@@ -24,7 +24,7 @@ jobs:
       run: go mod download
 
     - name: Set up OpenShift kubeconfig (Optional)
-      if: ${{ secrets.OPENSHIFT_SERVER != '' && secrets.OPENSHIFT_TOKEN != '' }}
+      if: secrets.OPENSHIFT_SERVER && secrets.OPENSHIFT_TOKEN
       run: |
         echo "Setting up OpenShift kubeconfig from secrets..."
         mkdir -p ~/.kube
@@ -53,7 +53,7 @@ jobs:
         echo "✓ OpenShift kubeconfig configured"
 
     - name: Verify OpenShift connectivity (Optional)
-      if: ${{ secrets.OPENSHIFT_SERVER != '' && secrets.OPENSHIFT_TOKEN != '' }}
+      if: secrets.OPENSHIFT_SERVER && secrets.OPENSHIFT_TOKEN
       run: |
         # Install kubectl
         echo "Installing kubectl..."
