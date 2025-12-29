@@ -53,7 +53,7 @@ Example: `sha256~YOUR_TOKEN_WILL_BE_MUCH_LONGER_THAN_THIS_EXAMPLE`
 
 6. Add the second secret:
    - **Name:** `OPENSHIFT_TOKEN`
-   - **Value:** Your authentication token (e.g., `sha256~YOUR_TOKEN_WILL_BE_MUCH_LONGER_THAN_THIS_EXAMPLE`)
+   - **Value:** Your authentication token (paste the actual token from step 1)
    - Click **Add secret**
 
 ## Step 3: Verify the Secrets
