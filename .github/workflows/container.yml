@@ -1,12 +1,18 @@
 name: Container Build and Push
 
 on:
-  push:
+  # Only build container after CI workflow passes
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
     branches:
       - main
       - release-4.18
       - release-4.19
       - release-4.20
+  # Still allow manual container builds on tags
+  push:
     tags:
       - 'v*'
   pull_request:
@@ -25,12 +31,17 @@ jobs:
   build-and-push:
     name: Build and Push Container Image
     runs-on: ubuntu-latest
+    # Only run if CI workflow succeeded, or if triggered by tag/PR
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'push' || github.event_name == 'pull_request' }}
     permissions:
       contents: read
       packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # When triggered by workflow_run, checkout the commit that triggered CI
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
