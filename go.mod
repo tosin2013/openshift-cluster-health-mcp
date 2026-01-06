@@ -56,6 +56,7 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-// Exclude structured-merge-diff/v4 to prevent version conflicts with K8s v0.32.x
-// K8s v0.32.x requires v6, but some transitive dependencies may try to pull v4
-exclude sigs.k8s.io/structured-merge-diff/v4 v4.0.0
+// Replace structured-merge-diff/v4 with v6 for K8s v0.32.7 compatibility
+// K8s v0.32.7 code expects v4 but dependency resolution provides v6
+// This replace directive forces v4 to resolve to v6 to match what's available
+replace sigs.k8s.io/structured-merge-diff/v4 => sigs.k8s.io/structured-merge-diff/v6 v6.3.0
