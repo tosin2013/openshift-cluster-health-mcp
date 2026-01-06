@@ -34,6 +34,12 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Tidy dependencies
+        run: go mod tidy
+
+      - name: Tidy dependencies
+        run: go mod tidy
+
       - name: Set up OpenShift kubeconfig (Optional)
         if: env.OPENSHIFT_SERVER != '' && env.OPENSHIFT_TOKEN != ''
         run: |
