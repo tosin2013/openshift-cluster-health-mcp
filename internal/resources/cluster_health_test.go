@@ -51,7 +51,9 @@ func TestClusterHealthResource_MimeType(t *testing.T) {
 
 func TestClusterHealthResource_Read(t *testing.T) {
 	k8sClient, err := clients.NewK8sClient(nil)
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("Skipping: unable to create Kubernetes client (requires cluster access): %v", err)
+	}
 
 	memCache := cache.NewMemoryCache(30 * time.Second)
 	defer memCache.Close()
@@ -94,7 +96,9 @@ func TestClusterHealthResource_Read(t *testing.T) {
 
 func TestClusterHealthResource_CacheUsage(t *testing.T) {
 	k8sClient, err := clients.NewK8sClient(nil)
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("Skipping: unable to create Kubernetes client (requires cluster access): %v", err)
+	}
 
 	memCache := cache.NewMemoryCache(30 * time.Second)
 	defer memCache.Close()
@@ -127,7 +131,9 @@ func TestClusterHealthResource_CacheUsage(t *testing.T) {
 
 func TestClusterHealthResource_CacheExpiration(t *testing.T) {
 	k8sClient, err := clients.NewK8sClient(nil)
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("Skipping: unable to create Kubernetes client (requires cluster access): %v", err)
+	}
 
 	// Create cache with short TTL
 	memCache := cache.NewMemoryCache(1 * time.Second)
@@ -227,7 +233,9 @@ func TestGenerateHealthMessage(t *testing.T) {
 
 func TestClusterHealthResource_WithCoordinationEngine(t *testing.T) {
 	k8sClient, err := clients.NewK8sClient(nil)
-	require.NoError(t, err)
+	if err != nil {
+		t.Skipf("Skipping: unable to create Kubernetes client (requires cluster access): %v", err)
+	}
 
 	memCache := cache.NewMemoryCache(30 * time.Second)
 	defer memCache.Close()
