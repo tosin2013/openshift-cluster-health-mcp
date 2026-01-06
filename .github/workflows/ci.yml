@@ -2,9 +2,17 @@ name: CI
 
 'on':
   push:
-    branches: [main]
+    branches:
+      - main
+      - release-4.18
+      - release-4.19
+      - release-4.20
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - release-4.18
+      - release-4.19
+      - release-4.20
 
 jobs:
   test:
@@ -18,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache: true
@@ -55,7 +63,7 @@ jobs:
           echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
           echo "✓ OpenShift kubeconfig configured"
 
-      - name: Verify OpenShift connectivity (Optional)
+      - name: Verify OpenShift connectivity and version (Optional)
         if: env.OPENSHIFT_SERVER != '' && env.OPENSHIFT_TOKEN != ''
         run: |
           # Install kubectl
@@ -67,13 +75,78 @@ jobs:
 
           # Test connection
           echo "Testing OpenShift cluster connectivity..."
-          if kubectl version --short 2>/dev/null; then
-            echo "✓ Connected to OpenShift cluster"
-            kubectl get nodes && echo "✓ Cluster is accessible" || echo "⚠ Could not list nodes"
-          else
+          if ! kubectl version --short 2>/dev/null; then
             echo "⚠ Could not connect to OpenShift cluster - tests will run without cluster access"
             exit 0
           fi
+
+          echo "✓ Connected to OpenShift cluster"
+          kubectl get nodes && echo "✓ Cluster is accessible" || echo "⚠ Could not list nodes"
+
+          # Determine expected OpenShift version from branch
+          BRANCH_NAME="${{ github.ref_name }}"
+          case $BRANCH_NAME in
+            main|release-4.18)
+              EXPECTED_OCP_VERSION="4.18"
+              EXPECTED_K8S_VERSION="1.31"
+              ;;
+            release-4.19)
+              EXPECTED_OCP_VERSION="4.19"
+              EXPECTED_K8S_VERSION="1.32"
+              ;;
+            release-4.20)
+              EXPECTED_OCP_VERSION="4.20"
+              EXPECTED_K8S_VERSION="1.33"
+              ;;
+            *)
+              echo "ℹ️  Unknown branch, skipping version check"
+              exit 0
+              ;;
+          esac
+
+          # Get actual cluster versions
+          echo ""
+          echo "=== Version Compatibility Check ==="
+          echo "Branch: $BRANCH_NAME"
+          echo "Expected: OpenShift $EXPECTED_OCP_VERSION (Kubernetes $EXPECTED_K8S_VERSION)"
+
+          # Get Kubernetes version
+          K8S_FULL_VERSION=$(kubectl version -o json 2>/dev/null | jq -r '.serverVersion.gitVersion' | sed 's/v//')
+          K8S_MAJOR_MINOR=$(echo $K8S_FULL_VERSION | cut -d. -f1-2)
+          echo "Detected: Kubernetes $K8S_FULL_VERSION (major.minor: $K8S_MAJOR_MINOR)"
+
+          # Try to get OpenShift version (if available)
+          if kubectl version -o json 2>/dev/null | jq -e '.serverVersion.platform' >/dev/null 2>&1; then
+            OCP_VERSION=$(kubectl get clusterversion version -o jsonpath='{.status.desired.version}' 2>/dev/null || echo "unknown")
+            OCP_MAJOR_MINOR=$(echo $OCP_VERSION | cut -d. -f1-2)
+            echo "Detected: OpenShift $OCP_VERSION (major.minor: $OCP_MAJOR_MINOR)"
+
+            # Compare OpenShift major.minor
+            if [ "$OCP_MAJOR_MINOR" != "$EXPECTED_OCP_VERSION" ]; then
+              echo ""
+              echo "⚠️  WARNING: OpenShift version mismatch!"
+              echo "   Branch targets: OpenShift $EXPECTED_OCP_VERSION"
+              echo "   Cluster running: OpenShift $OCP_MAJOR_MINOR"
+              echo "   Tests will continue but may encounter compatibility issues"
+            else
+              echo ""
+              echo "✓ OpenShift version matches branch target ($EXPECTED_OCP_VERSION)"
+            fi
+          else
+            # Fallback to Kubernetes version check
+            if [ "$K8S_MAJOR_MINOR" != "$EXPECTED_K8S_VERSION" ]; then
+              echo ""
+              echo "⚠️  WARNING: Kubernetes version mismatch!"
+              echo "   Branch targets: Kubernetes $EXPECTED_K8S_VERSION (OpenShift $EXPECTED_OCP_VERSION)"
+              echo "   Cluster running: Kubernetes $K8S_MAJOR_MINOR"
+              echo "   Tests will continue but may encounter compatibility issues"
+            else
+              echo ""
+              echo "✓ Kubernetes version matches branch target ($EXPECTED_K8S_VERSION)"
+            fi
+          fi
+          echo "==================================="
+          echo ""
 
       - name: Run tests
         run: |
@@ -89,7 +162,7 @@ jobs:
           KUBECONFIG: ${{ env.KUBECONFIG || '' }}
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: ./coverage.out
           flags: unittests
@@ -103,13 +176,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache: true
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
           args: --timeout=5m
@@ -122,7 +195,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.24'
           cache: true
