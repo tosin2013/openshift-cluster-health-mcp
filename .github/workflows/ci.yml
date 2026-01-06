@@ -187,6 +187,12 @@ jobs:
           go-version: '1.24'
           cache: true
 
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Tidy dependencies
+        run: go mod tidy
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
@@ -205,6 +211,12 @@ jobs:
         with:
           go-version: '1.24'
           cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Tidy dependencies
+        run: go mod tidy
 
       - name: Build binary
         run: |
