@@ -39,7 +39,6 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	go.yaml.in/yaml/v3 v3.0.3 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
@@ -58,9 +57,10 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-// Force older kube-openapi version without yaml conflicts
-// The v0.0.0-20241105132330 version has go.yaml.in vs gopkg.in conflicts
+// Force compatible versions to resolve yaml package conflicts
+// gnostic-models v0.6.8 uses gopkg.in/yaml.v3 (compatible with kube-openapi)
+// gnostic-models v0.7.0+ uses go.yaml.in/yaml/v3 (incompatible)
 replace (
+	github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.8
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20240423202451-8948a665c108
-	go.yaml.in/yaml/v3 => gopkg.in/yaml.v3 v3.0.1
 )
