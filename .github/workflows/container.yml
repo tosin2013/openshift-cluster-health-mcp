@@ -11,8 +11,13 @@ on:
       - release-4.18
       - release-4.19
       - release-4.20
-  # Still allow manual container builds on tags
+  # Allow manual container builds on tags
   push:
+    branches:
+      - main
+      - release-4.18
+      - release-4.19
+      - release-4.20
     tags:
       - 'v*'
   pull_request:
@@ -21,6 +26,7 @@ on:
       - release-4.18
       - release-4.19
       - release-4.20
+  workflow_dispatch:
 
 env:
   IMAGE_REGISTRY: quay.io
@@ -72,6 +78,7 @@ jobs:
               echo "version=dev" >> $GITHUB_OUTPUT
               ;;
           esac
+          echo "Branch: $BRANCH_NAME -> OpenShift version: $(cat $GITHUB_OUTPUT | grep version | cut -d= -f2)"
 
       - name: Extract metadata (tags, labels)
         id: meta
@@ -79,12 +86,10 @@ jobs:
         with:
           images: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Version-specific tags with commit SHA
-            type=raw,value=${{ steps.ocp-version.outputs.version }}-{{sha}},enable=${{ github.event_name != 'pull_request' }}
-            # Version-specific latest tag
+            # OpenShift version-specific tags
             type=raw,value=${{ steps.ocp-version.outputs.version }}-latest,enable=${{ github.event_name != 'pull_request' }}
-            # Version with date and commit
-            type=raw,value=${{ steps.ocp-version.outputs.version }}-{{date 'YYYYMMDD'}}-{{sha}},enable=${{ github.event_name != 'pull_request' }}
+            type=raw,value=${{ steps.ocp-version.outputs.version }}-{{sha}},enable=${{ github.event_name != 'pull_request' }}
+            type=raw,value=${{ steps.ocp-version.outputs.version }}-{{date 'YYYYMMDD'}},enable=${{ github.event_name != 'pull_request' }}
             # Tag with version from git tag
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
