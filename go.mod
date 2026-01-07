@@ -48,6 +48,7 @@ require (
 	golang.org/x/time v0.9.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
@@ -59,4 +60,7 @@ require (
 
 // Force older kube-openapi version without yaml conflicts
 // The v0.0.0-20241105132330 version has go.yaml.in vs gopkg.in conflicts
-replace k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20240423202451-8948a665c108
+replace (
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20240423202451-8948a665c108
+	go.yaml.in/yaml/v3 => gopkg.in/yaml.v3 v3.0.1
+)
