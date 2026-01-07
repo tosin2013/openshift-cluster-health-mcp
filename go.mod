@@ -38,7 +38,6 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
-	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
@@ -57,10 +56,13 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-// Force compatible versions to resolve yaml package conflicts
-// gnostic-models v0.6.8 uses gopkg.in/yaml.v3 (compatible with kube-openapi)
-// gnostic-models v0.7.0+ uses go.yaml.in/yaml/v3 (incompatible)
+// OpenShift 4.19 compatibility requirements
+// - K8s v0.31.5 (matches OpenShift 4.19)
+// - Pin all transitive dependencies to exact versions K8s v0.31.5 requires
+// - This eliminates go.yaml.in/yaml/v3 vs gopkg.in/yaml.v3 type conflicts
 replace (
 	github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.8
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20240423202451-8948a665c108
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340
+	sigs.k8s.io/structured-merge-diff/v4 => sigs.k8s.io/structured-merge-diff/v4 v4.4.1
+	sigs.k8s.io/yaml => sigs.k8s.io/yaml v1.4.0
 )
