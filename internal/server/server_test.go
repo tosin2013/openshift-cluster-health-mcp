@@ -46,6 +46,10 @@ func setupTestServer(t *testing.T) *MCPServer {
 		t.Fatalf("Failed to register tools: %v", err)
 	}
 
+	if err := server.registerResources(); err != nil {
+		t.Fatalf("Failed to register resources: %v", err)
+	}
+
 	return server
 }
 
@@ -94,7 +98,7 @@ func TestMCPServer_RegisterTools(t *testing.T) {
 	}
 }
 
-func TestHandleMCPInfo(t *testing.T) {
+func TestHandleMCPCapabilities(t *testing.T) {
 	server := setupTestServer(t)
 	defer func() {
 		if err := server.k8sClient.Close(); err != nil {
@@ -104,6 +108,90 @@ func TestHandleMCPInfo(t *testing.T) {
 	defer server.cache.Close()
 
 	req := httptest.NewRequest(http.MethodGet, "/mcp", nil)
+	w := httptest.NewRecorder()
+
+	server.handleMCPCapabilities(w, req)
+
+	resp := w.Result()
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if contentType != "application/json" {
+		t.Errorf("Expected Content-Type application/json, got %s", contentType)
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	// Verify name and version
+	if result["name"] != server.config.Name {
+		t.Errorf("Expected name %s, got %v", server.config.Name, result["name"])
+	}
+
+	if result["version"] != server.config.Version {
+		t.Errorf("Expected version %s, got %v", server.config.Version, result["version"])
+	}
+
+	// Verify capabilities object exists
+	capabilities, ok := result["capabilities"].(map[string]interface{})
+	if !ok {
+		t.Fatal("Expected capabilities object in response")
+	}
+
+	// Verify tools capability
+	if tools, ok := capabilities["tools"].(bool); !ok || !tools {
+		t.Error("Expected capabilities.tools to be true")
+	}
+
+	// Verify resources capability
+	if resources, ok := capabilities["resources"].(bool); !ok || !resources {
+		t.Error("Expected capabilities.resources to be true")
+	}
+
+	// Verify prompts capability (should be false)
+	if prompts, ok := capabilities["prompts"].(bool); !ok || prompts {
+		t.Error("Expected capabilities.prompts to be false")
+	}
+}
+
+func TestHandleMCPCapabilities_MethodNotAllowed(t *testing.T) {
+	server := setupTestServer(t)
+	defer func() {
+		if err := server.k8sClient.Close(); err != nil {
+			t.Logf("Error closing k8s client: %v", err)
+		}
+	}()
+	defer server.cache.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	w := httptest.NewRecorder()
+
+	server.handleMCPCapabilities(w, req)
+
+	resp := w.Result()
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("Expected status 405, got %d", resp.StatusCode)
+	}
+}
+
+func TestHandleMCPInfo(t *testing.T) {
+	server := setupTestServer(t)
+	defer func() {
+		if err := server.k8sClient.Close(); err != nil {
+			t.Logf("Error closing k8s client: %v", err)
+		}
+	}()
+	defer server.cache.Close()
+
+	req := httptest.NewRequest(http.MethodGet, "/mcp/info", nil)
 	w := httptest.NewRecorder()
 
 	server.handleMCPInfo(w, req)
