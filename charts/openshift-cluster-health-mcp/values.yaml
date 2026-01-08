@@ -14,8 +14,10 @@ image:
 imagePullSecrets: []
 
 # Override chart name
+# The default fullnameOverride "mcp-server" aligns with ADR-036 Option 2
+# This provides a simpler, more memorable service name: mcp-server.self-healing-platform.svc:8080
 nameOverride: ""
-fullnameOverride: ""
+fullnameOverride: "mcp-server"
 
 # MCP Transport configuration (http or stdio)
 transport: http  # Use http for OpenShift Lightspeed integration
@@ -25,7 +27,7 @@ httpPort: 8080
 serviceAccount:
   create: true
   annotations: {}
-  name: cluster-health-mcp
+  name: mcp-server
 
 # RBAC configuration
 rbac:
