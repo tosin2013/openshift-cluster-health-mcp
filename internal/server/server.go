@@ -296,6 +296,9 @@ func (s *MCPServer) startHTTPTransport(ctx context.Context) error {
 		case r.URL.Path == "/cache/stats":
 			s.handleCacheStats(w, r)
 			return
+		case r.URL.Path == "/mcp":
+			s.handleMCPCapabilities(w, r)
+			return
 		case r.URL.Path == "/mcp/info":
 			s.handleMCPInfo(w, r)
 			return
@@ -369,6 +372,34 @@ func (s *MCPServer) startStdioTransport(ctx context.Context) error {
 	log.Println("  - Reduces codebase complexity and maintenance burden")
 
 	return fmt.Errorf("stdio transport is DEPRECATED - use HTTP transport (MCP_TRANSPORT=http)")
+}
+
+// handleMCPCapabilities returns MCP server capabilities per MCP specification
+// GET /mcp - Returns server name, version, and capabilities
+// Reference: https://spec.modelcontextprotocol.io/
+func (s *MCPServer) handleMCPCapabilities(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed - use GET", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Build capabilities response per MCP specification
+	response := map[string]interface{}{
+		"name":    s.config.Name,
+		"version": s.config.Version,
+		"capabilities": map[string]bool{
+			"tools":     len(s.tools) > 0,
+			"resources": len(s.resources) > 0,
+			"prompts":   false, // Not implemented
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	if err := writeJSON(w, response); err != nil {
+		log.Printf("Error writing MCP capabilities response: %v", err)
+	}
 }
 
 // handleMCPInfo returns server info
