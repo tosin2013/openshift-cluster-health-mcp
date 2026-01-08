@@ -4,7 +4,7 @@
 replicaCount: 1  # Single replica for dev testing
 
 image:
-  repository: image-registry.openshift-image-registry.svc:5000/self-healing-platform/cluster-health-mcp
+  repository: image-registry.openshift-image-registry.svc:5000/self-healing-platform/mcp-server
   pullPolicy: Always
   tag: "latest"
 
@@ -12,9 +12,13 @@ image:
 transport: http
 httpPort: 8080
 
+# Service name: mcp-server (Issue #22 - ADR-036 Option 2)
+# Service URL: mcp-server.self-healing-platform.svc:8080
+fullnameOverride: "mcp-server"
+
 serviceAccount:
   create: true
-  name: cluster-health-mcp
+  name: mcp-server
 
 rbac:
   create: true

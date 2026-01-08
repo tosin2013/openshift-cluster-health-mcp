@@ -108,24 +108,27 @@ resources:
 
 ```bash
 # Create namespace
-oc new-project cluster-health-mcp
+oc new-project self-healing-platform
 
 # Install the chart (replace 4.20 with your version)
-helm install cluster-health-mcp \
+# Default service name: mcp-server on port 8080
+helm install mcp-server \
   ./charts/openshift-cluster-health-mcp \
-  --namespace cluster-health-mcp \
+  --namespace self-healing-platform \
   --values values-4.20.yaml
 
 # Verify installation
-oc get pods -n cluster-health-mcp
-oc logs -l app.kubernetes.io/name=openshift-cluster-health-mcp -n cluster-health-mcp
+oc get pods -n self-healing-platform
+oc logs -l app=mcp-server -n self-healing-platform
+
+# Service endpoint: mcp-server.self-healing-platform.svc:8080
 ```
 
 #### 4. Test the Deployment
 
 ```bash
 # Port-forward to access the server
-oc port-forward -n cluster-health-mcp svc/cluster-health-mcp 8080:8080
+oc port-forward -n self-healing-platform svc/mcp-server 8080:8080
 
 # In another terminal, test the endpoints
 curl http://localhost:8080/health
@@ -141,25 +144,25 @@ For testing or non-Helm deployments:
 
 ```bash
 # Create deployment
-oc new-project cluster-health-mcp
+oc new-project self-healing-platform
 
 cat <<EOF | oc apply -f -
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cluster-health-mcp
-  namespace: cluster-health-mcp
+  name: mcp-server
+  namespace: self-healing-platform
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cluster-health-mcp
+      app: mcp-server
   template:
     metadata:
       labels:
-        app: cluster-health-mcp
+        app: mcp-server
     spec:
-      serviceAccountName: cluster-health-mcp
+      serviceAccountName: mcp-server
       containers:
       - name: mcp-server
         image: quay.io/takinosh/openshift-cluster-health-mcp:4.20-latest
@@ -197,16 +200,18 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: cluster-health-mcp
-  namespace: cluster-health-mcp
+  name: mcp-server
+  namespace: self-healing-platform
 spec:
   selector:
-    app: cluster-health-mcp
+    app: mcp-server
   ports:
   - port: 8080
     targetPort: 8080
     protocol: TCP
 EOF
+
+# Service endpoint: mcp-server.self-healing-platform.svc:8080
 ```
 
 ### Method 3: Local Development
@@ -243,7 +248,7 @@ The MCP server requires the following permissions (automatically created by Helm
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: cluster-health-mcp
+  name: mcp-server-reader
 rules:
 - apiGroups: [""]
   resources: ["nodes", "pods", "namespaces"]
@@ -291,15 +296,15 @@ When upgrading your OpenShift cluster, update the MCP server container image:
 
 ```bash
 # Upgrade from 4.19 to 4.20
-helm upgrade cluster-health-mcp \
+helm upgrade mcp-server \
   ./charts/openshift-cluster-health-mcp \
-  --namespace cluster-health-mcp \
+  --namespace self-healing-platform \
   --reuse-values \
   --set image.tag=4.20-latest
 
 # Verify the new version
-oc get pods -n cluster-health-mcp
-oc describe pod -l app.kubernetes.io/name=openshift-cluster-health-mcp -n cluster-health-mcp | grep Image:
+oc get pods -n self-healing-platform
+oc describe pod -l app=mcp-server -n self-healing-platform | grep Image:
 ```
 
 ## Verification
@@ -308,13 +313,13 @@ After installation, verify the server is working:
 
 ```bash
 # Check pod status
-oc get pods -n cluster-health-mcp
+oc get pods -n self-healing-platform
 
 # Check logs
-oc logs -l app.kubernetes.io/name=openshift-cluster-health-mcp -n cluster-health-mcp
+oc logs -l app=mcp-server -n self-healing-platform
 
 # Port-forward and test endpoints
-oc port-forward -n cluster-health-mcp svc/cluster-health-mcp 8080:8080
+oc port-forward -n self-healing-platform svc/mcp-server 8080:8080
 
 # Test health endpoint
 curl http://localhost:8080/health
@@ -341,7 +346,7 @@ curl -X POST http://localhost:8080/mcp/tools/get-cluster-health \
 
 ```bash
 # Check logs
-oc logs -l app.kubernetes.io/name=openshift-cluster-health-mcp -n cluster-health-mcp --previous
+oc logs -l app=mcp-server -n self-healing-platform --previous
 
 # Common issues:
 # 1. Wrong image tag for your OpenShift version
@@ -359,9 +364,9 @@ oc logs -l app.kubernetes.io/name=openshift-cluster-health-mcp -n cluster-health
 oc version
 
 # Update Helm values with correct image tag
-helm upgrade cluster-health-mcp \
+helm upgrade mcp-server \
   ./charts/openshift-cluster-health-mcp \
-  --namespace cluster-health-mcp \
+  --namespace self-healing-platform \
   --set image.tag=4.20-latest  # Match your version
 ```
 
@@ -369,13 +374,13 @@ helm upgrade cluster-health-mcp \
 
 ```bash
 # Check service and endpoints
-oc get svc,endpoints -n cluster-health-mcp
+oc get svc,endpoints -n self-healing-platform
 
 # Check pod networking
-oc get pods -n cluster-health-mcp -o wide
+oc get pods -n self-healing-platform -o wide
 
 # Check security policies
-oc get networkpolicies -n cluster-health-mcp
+oc get networkpolicies -n self-healing-platform
 ```
 
 ## Next Steps

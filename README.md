@@ -99,15 +99,18 @@ curl http://localhost:8080/health
 oc version
 
 # Install with Helm using the matching image tag
-helm install cluster-health-mcp ./charts/openshift-cluster-health-mcp \
-  --namespace cluster-health-mcp \
+# The default service name is "mcp-server" on port 8080
+helm install mcp-server ./charts/openshift-cluster-health-mcp \
+  --namespace self-healing-platform \
   --create-namespace \
   --set image.repository=quay.io/takinosh/openshift-cluster-health-mcp \
   --set image.tag=4.20-latest  # Use 4.18-latest, 4.19-latest, or 4.20-latest
 
 # Verify deployment
-oc get pods -n cluster-health-mcp
-oc logs -l app.kubernetes.io/name=openshift-cluster-health-mcp -n cluster-health-mcp
+oc get pods -n self-healing-platform
+oc logs -l app=mcp-server -n self-healing-platform
+
+# Service endpoint: mcp-server.self-healing-platform.svc:8080
 ```
 
 **Option 2: Build from Source**
@@ -115,12 +118,12 @@ oc logs -l app.kubernetes.io/name=openshift-cluster-health-mcp -n cluster-health
 ```bash
 # Build container image
 make docker-build
-oc new-build --name cluster-health-mcp --binary --strategy docker -n <namespace>
-oc start-build cluster-health-mcp --from-dir=. --follow -n <namespace>
+oc new-build --name mcp-server --binary --strategy docker -n self-healing-platform
+oc start-build mcp-server --from-dir=. --follow -n self-healing-platform
 
 # Deploy with Helm
-helm install cluster-health-mcp ./charts/openshift-cluster-health-mcp \
-  --namespace <namespace>
+helm install mcp-server ./charts/openshift-cluster-health-mcp \
+  --namespace self-healing-platform
 ```
 
 **📖 For detailed installation instructions, version-specific configurations, and troubleshooting, see the [Installation Guide](./docs/INSTALLATION.md).**
@@ -197,11 +200,12 @@ curl -X POST http://localhost:8080/mcp/tools/get-cluster-health \
 
 ```typescript
 // Example: Connect to MCP server
+// Service URL: mcp-server.self-healing-platform.svc:8080
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 const transport = new SSEClientTransport(
-  new URL("http://cluster-health-mcp:8080/mcp/sse")
+  new URL("http://mcp-server.self-healing-platform.svc:8080/mcp/sse")
 );
 
 const client = new Client({
@@ -303,7 +307,7 @@ affinity:
       podAffinityTerm:
         labelSelector:
           matchLabels:
-            app.kubernetes.io/name: openshift-cluster-health-mcp
+            app: mcp-server
         topologyKey: kubernetes.io/hostname
 ```
 
@@ -324,7 +328,7 @@ The server exposes Prometheus metrics at `/metrics`:
 **Pods not starting (SCC violations)**:
 ```bash
 # Check security context constraints
-oc get pods -o yaml | grep -A 10 securityContext
+oc get pods -n self-healing-platform -o yaml | grep -A 10 securityContext
 
 # Ensure podSecurityContext.runAsUser is not set (let OpenShift assign)
 ```
@@ -332,10 +336,10 @@ oc get pods -o yaml | grep -A 10 securityContext
 **Integration failures**:
 ```bash
 # Check logs
-oc logs -l app.kubernetes.io/name=openshift-cluster-health-mcp
+oc logs -l app=mcp-server -n self-healing-platform
 
 # Verify service connectivity
-oc exec <pod-name> -- curl -I http://coordination-engine:8080/health
+oc exec -n self-healing-platform <pod-name> -- curl -I http://coordination-engine:8080/health
 ```
 
 **Cache issues**:

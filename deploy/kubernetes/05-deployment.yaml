@@ -1,30 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cluster-health-mcp
-  namespace: openshift-cluster-health
+  name: mcp-server
+  namespace: self-healing-platform
   labels:
     app.kubernetes.io/name: openshift-cluster-health-mcp
     app.kubernetes.io/component: mcp-server
     app.kubernetes.io/version: "0.1.0"
+    app: mcp-server
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: openshift-cluster-health-mcp
       app.kubernetes.io/component: mcp-server
+      app: mcp-server
   template:
     metadata:
       labels:
         app.kubernetes.io/name: openshift-cluster-health-mcp
         app.kubernetes.io/component: mcp-server
         app.kubernetes.io/version: "0.1.0"
+        app: mcp-server
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
     spec:
-      serviceAccountName: cluster-health-mcp
+      serviceAccountName: mcp-server
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532  # nonroot user from distroless
