@@ -166,7 +166,10 @@ make helm-uninstall
 # Health check
 curl http://localhost:8080/health
 
-# Server info
+# Server capabilities (MCP spec compliant)
+curl http://localhost:8080/mcp
+
+# Server info (detailed)
 curl http://localhost:8080/mcp/info
 
 # List available tools
@@ -216,6 +219,7 @@ curl -X DELETE http://localhost:8080/mcp/session/abc123...
 |----------|--------|------|-------------|
 | `/health` | GET | No | Health check |
 | `/ready` | GET | No | Readiness check |
+| `/mcp` | GET | No | Server capabilities (MCP spec) |
 | `/mcp/info` | GET | No | Server metadata |
 | `/mcp/tools` | GET | No | List available tools |
 | `/mcp/resources` | GET | No | List available resources |
