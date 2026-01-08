@@ -1,15 +1,15 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: cluster-health-mcp-reader-binding
+  name: mcp-server-reader-binding
   labels:
     app.kubernetes.io/name: openshift-cluster-health-mcp
     app.kubernetes.io/component: rbac
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: cluster-health-mcp-reader
+  name: mcp-server-reader
 subjects:
 - kind: ServiceAccount
-  name: cluster-health-mcp
-  namespace: openshift-cluster-health
+  name: mcp-server
+  namespace: self-healing-platform

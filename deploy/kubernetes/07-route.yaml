@@ -1,15 +1,16 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: cluster-health-mcp
-  namespace: openshift-cluster-health
+  name: mcp-server
+  namespace: self-healing-platform
   labels:
     app.kubernetes.io/name: openshift-cluster-health-mcp
     app.kubernetes.io/component: mcp-server
+    app: mcp-server
 spec:
   to:
     kind: Service
-    name: cluster-health-mcp
+    name: mcp-server
     weight: 100
   port:
     targetPort: http

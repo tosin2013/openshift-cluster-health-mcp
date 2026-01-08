@@ -46,6 +46,7 @@ Selector labels
 {{- define "openshift-cluster-health-mcp.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "openshift-cluster-health-mcp.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app: {{ include "openshift-cluster-health-mcp.fullname" . }}
 {{- end }}
 
 {{/*
