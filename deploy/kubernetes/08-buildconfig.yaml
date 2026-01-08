@@ -1,16 +1,17 @@
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
-  name: cluster-health-mcp
-  namespace: openshift-cluster-health
+  name: mcp-server
+  namespace: self-healing-platform
   labels:
     app.kubernetes.io/name: openshift-cluster-health-mcp
     app.kubernetes.io/component: build
+    app: mcp-server
 spec:
   output:
     to:
       kind: ImageStreamTag
-      name: cluster-health-mcp:latest
+      name: mcp-server:latest
   source:
     type: Binary
     binary: {}
@@ -23,11 +24,12 @@ spec:
 apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
-  name: cluster-health-mcp
-  namespace: openshift-cluster-health
+  name: mcp-server
+  namespace: self-healing-platform
   labels:
     app.kubernetes.io/name: openshift-cluster-health-mcp
     app.kubernetes.io/component: imagestream
+    app: mcp-server
 spec:
   lookupPolicy:
     local: true
