@@ -529,10 +529,9 @@ func TestPromptConsistency(t *testing.T) {
 				t.Errorf("Name '%s' should use kebab-case (hyphens)", name)
 			}
 
-			// Description should be a complete sentence (end with period or not start with capital)
-			desc := p.Description()
-			if len(desc) > 0 && desc[0] < 'A' || desc[0] > 'Z' {
-				// It's fine if it doesn't start with capital (some styles)
+			// Description should not be empty
+			if p.Description() == "" {
+				t.Error("Description() should not return empty string")
 			}
 
 			// Execute should always return valid messages
