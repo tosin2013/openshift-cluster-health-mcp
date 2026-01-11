@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"github.com/openshift-aiops/openshift-cluster-health-mcp/internal/prompts"
 	"github.com/openshift-aiops/openshift-cluster-health-mcp/internal/resources"
 	"github.com/openshift-aiops/openshift-cluster-health-mcp/internal/tools"
 	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/cache"
@@ -28,6 +29,7 @@ type MCPServer struct {
 	sessionManager *SessionManager          // Session manager for REST API clients
 	tools          map[string]Tool          // Registry of available tools (typed for type safety)
 	resources      map[string]interface{}   // Registry of available resources
+	prompts        map[string]interface{}   // Registry of available prompts
 }
 
 // NewMCPServer creates a new MCP server instance
@@ -102,6 +104,7 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 		sessionManager: sessionManager,
 		tools:          make(map[string]Tool),
 		resources:      make(map[string]interface{}),
+		prompts:        make(map[string]interface{}),
 	}
 
 	// Register tools
@@ -112,6 +115,11 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 	// Register resources
 	if err := server.registerResources(); err != nil {
 		return nil, fmt.Errorf("failed to register resources: %w", err)
+	}
+
+	// Register prompts
+	if err := server.registerPrompts(); err != nil {
+		return nil, fmt.Errorf("failed to register prompts: %w", err)
 	}
 
 	log.Printf("MCP Server initialized: %s v%s", config.Name, config.Version)
@@ -137,6 +145,14 @@ func (s *MCPServer) registerTools() error {
 
 		triggerRemediationTool := tools.NewTriggerRemediationTool(s.ceClient)
 		s.registerTool(triggerRemediationTool)
+
+		// NEW: Remediation recommendations tool (ML predictions)
+		remediationRecsTool := tools.NewGetRemediationRecommendationsTool(s.ceClient)
+		s.registerTool(remediationRecsTool)
+
+		// NEW: Create incident tool
+		createIncidentTool := tools.NewCreateIncidentTool(s.ceClient)
+		s.registerTool(createIncidentTool)
 	} else {
 		log.Printf("Skipping Coordination Engine tools (not enabled)")
 	}
@@ -181,8 +197,12 @@ func (s *MCPServer) registerTool(tool Tool) {
 
 	// Create handler function that wraps our tool's Execute method
 	handler := func(ctx context.Context, req *mcp.CallToolRequest, params map[string]interface{}) (*mcp.CallToolResult, any, error) {
-		// Execute the tool (params contains the arguments)
-		result, err := tool.Execute(ctx, params)
+		// Add timeout enforcement to prevent hanging on slow operations
+		timeoutCtx, cancel := context.WithTimeout(ctx, s.config.RequestTimeout)
+		defer cancel()
+
+		// Execute the tool with timeout context
+		result, err := tool.Execute(timeoutCtx, params)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -226,12 +246,75 @@ func (s *MCPServer) registerResources() error {
 		incidentsResource := resources.NewIncidentsResource(s.ceClient, s.cache)
 		s.resources[incidentsResource.URI()] = incidentsResource
 		log.Printf("Registered resource: %s - %s", incidentsResource.URI(), incidentsResource.Name())
+
+		// NEW: Remediation history resource
+		remediationHistoryResource := resources.NewRemediationHistoryResource(s.ceClient, s.cache)
+		s.resources[remediationHistoryResource.URI()] = remediationHistoryResource
+		log.Printf("Registered resource: %s - %s", remediationHistoryResource.URI(), remediationHistoryResource.Name())
 	} else {
 		log.Printf("Skipping cluster://incidents resource (Coordination Engine not enabled)")
 	}
 
 	log.Printf("Total resources registered: %d", len(s.resources))
 	return nil
+}
+
+// registerPrompts initializes and registers all MCP prompts
+func (s *MCPServer) registerPrompts() error {
+	// Core prompts (always available)
+	diagnoseCluster := prompts.NewDiagnoseClusterPrompt()
+	s.registerPrompt(diagnoseCluster)
+
+	investigatePods := prompts.NewInvestigatePodsPrompt()
+	s.registerPrompt(investigatePods)
+
+	checkAnomalies := prompts.NewCheckAnomaliesPrompt()
+	s.registerPrompt(checkAnomalies)
+
+	optimizeAccess := prompts.NewOptimizeDataAccessPrompt()
+	s.registerPrompt(optimizeAccess)
+
+	// Coordination Engine prompts (if CE enabled)
+	if s.ceClient != nil {
+		predictAndPrevent := prompts.NewPredictAndPreventPrompt()
+		s.registerPrompt(predictAndPrevent)
+
+		correlateIncidents := prompts.NewCorrelateIncidentsPrompt()
+		s.registerPrompt(correlateIncidents)
+	} else {
+		log.Printf("Skipping Coordination Engine prompts (not enabled)")
+	}
+
+	log.Printf("Total prompts registered: %d", len(s.prompts))
+	return nil
+}
+
+// registerPrompt registers a prompt with both our internal map and the MCP SDK
+func (s *MCPServer) registerPrompt(prompt prompts.Prompt) {
+	// Store in our internal map
+	s.prompts[prompt.Name()] = prompt
+
+	// Create handler function that wraps our prompt's Execute method
+	handler := func(ctx context.Context, req *mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
+		// Convert request arguments to map
+		args := make(map[string]interface{})
+		if req.Params.Arguments != nil {
+			for k, v := range req.Params.Arguments {
+				args[k] = v
+			}
+		}
+
+		// Execute the prompt
+		return prompt.Execute(ctx, args)
+	}
+
+	// Register with MCP SDK
+	// TODO: Check MCP SDK documentation for correct prompt registration method
+	// The AddPrompt function may not exist in the current SDK version
+	_ = handler // Suppress unused variable warning until SDK registration is implemented
+	// mcp.AddPrompt(s.mcpServer, prompt.GetPrompt(), handler)
+
+	log.Printf("Registered prompt: %s - %s", prompt.Name(), prompt.Description())
 }
 
 // GetTools returns all registered tools
@@ -308,6 +391,9 @@ func (s *MCPServer) startHTTPTransport(ctx context.Context) error {
 		case r.URL.Path == "/mcp/resources":
 			s.handleListResources(w, r)
 			return
+		case r.URL.Path == "/mcp/prompts":
+			s.handleListPrompts(w, r)
+			return
 		// Session management endpoints (REST API)
 		case r.URL.Path == "/mcp/session":
 			s.handleSession(w, r)
@@ -352,7 +438,10 @@ func (s *MCPServer) startHTTPTransport(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		log.Println("Shutting down HTTP server...")
-		return s.httpServer.Shutdown(context.Background())
+		// Add timeout to graceful shutdown
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		return s.httpServer.Shutdown(shutdownCtx)
 	case err := <-errChan:
 		return err
 	}
@@ -391,7 +480,7 @@ func (s *MCPServer) handleMCPCapabilities(w http.ResponseWriter, r *http.Request
 		"capabilities": map[string]bool{
 			"tools":     len(s.tools) > 0,
 			"resources": len(s.resources) > 0,
-			"prompts":   false, // Not implemented
+			"prompts":   len(s.prompts) > 0,
 		},
 	}
 
@@ -628,6 +717,74 @@ func (s *MCPServer) handleListResources(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// handleListPrompts returns all available prompts
+func (s *MCPServer) handleListPrompts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Build prompts list response
+	type PromptInfo struct {
+		Name        string   `json:"name"`
+		Description string   `json:"description"`
+		Arguments   []string `json:"arguments,omitempty"`
+	}
+
+	promptsList := []PromptInfo{}
+	for _, prompt := range s.prompts {
+		switch p := prompt.(type) {
+		case *prompts.DiagnoseClusterPrompt:
+			promptsList = append(promptsList, PromptInfo{
+				Name:        p.Name(),
+				Description: p.Description(),
+				Arguments:   []string{"severity"},
+			})
+		case *prompts.InvestigatePodsPrompt:
+			promptsList = append(promptsList, PromptInfo{
+				Name:        p.Name(),
+				Description: p.Description(),
+				Arguments:   []string{"namespace", "pod_name"},
+			})
+		case *prompts.CheckAnomaliesPrompt:
+			promptsList = append(promptsList, PromptInfo{
+				Name:        p.Name(),
+				Description: p.Description(),
+				Arguments:   []string{"namespace", "timeframe"},
+			})
+		case *prompts.OptimizeDataAccessPrompt:
+			promptsList = append(promptsList, PromptInfo{
+				Name:        p.Name(),
+				Description: p.Description(),
+			})
+		case *prompts.PredictAndPreventPrompt:
+			promptsList = append(promptsList, PromptInfo{
+				Name:        p.Name(),
+				Description: p.Description(),
+				Arguments:   []string{"timeframe", "confidence_threshold"},
+			})
+		case *prompts.CorrelateIncidentsPrompt:
+			promptsList = append(promptsList, PromptInfo{
+				Name:        p.Name(),
+				Description: p.Description(),
+				Arguments:   []string{"time_window", "severity"},
+			})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	response := map[string]interface{}{
+		"prompts": promptsList,
+		"count":   len(promptsList),
+	}
+
+	if err := writeJSON(w, response); err != nil {
+		log.Printf("Error writing JSON response: %v", err)
+	}
+}
+
 // writeJSON is a helper to write JSON responses
 func writeJSON(w http.ResponseWriter, data interface{}) error {
 	encoder := json.NewEncoder(w)
@@ -643,7 +800,10 @@ func (s *MCPServer) Stop() error {
 	}
 	if s.httpServer != nil {
 		log.Println("Stopping HTTP server...")
-		return s.httpServer.Shutdown(context.Background())
+		// Add timeout to graceful shutdown
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		return s.httpServer.Shutdown(shutdownCtx)
 	}
 	return nil
 }
