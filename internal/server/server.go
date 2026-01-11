@@ -701,6 +701,13 @@ func (s *MCPServer) handleListResources(w http.ResponseWriter, r *http.Request) 
 				Description: r.Description(),
 				MimeType:    r.MimeType(),
 			})
+		case *resources.RemediationHistoryResource:
+			resourcesList = append(resourcesList, ResourceInfo{
+				URI:         r.URI(),
+				Name:        r.Name(),
+				Description: r.Description(),
+				MimeType:    r.MimeType(),
+			})
 		}
 	}
 
@@ -1081,6 +1088,8 @@ func (s *MCPServer) handleResourceRead(w http.ResponseWriter, r *http.Request) {
 	case *resources.NodesResource:
 		result, err = res.Read(ctx)
 	case *resources.IncidentsResource:
+		result, err = res.Read(ctx)
+	case *resources.RemediationHistoryResource:
 		result, err = res.Read(ctx)
 	default:
 		writeJSONError(w, http.StatusInternalServerError, "resource type not supported")
