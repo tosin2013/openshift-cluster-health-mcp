@@ -453,14 +453,14 @@ func (t *RemediationTool) Execute(ctx context.Context, params map[string]interfa
 
 **Purpose**: ML-powered anomaly detection
 
-**Endpoint**: `http://{model}-predictor.{namespace}.svc.cluster.local/v2/models/{model}/infer`
+**Endpoint**: `http://{model}-predictor.{namespace}.svc.cluster.local:{port}/v2/models/{model}/infer`
 
 **Protocol**: KServe V2 Inference Protocol (KServe 0.11+)
 
 **Actual Deployment**:
 - Service: `anomaly-detector-predictor.self-healing-platform.svc.cluster.local`
 - Service: `predictive-analytics-predictor.self-healing-platform.svc.cluster.local`
-- Port: 80 (ClusterIP default)
+- Port: 8080 (RawDeployment mode) or 80 (Serverless mode) - configurable via `KSERVE_PREDICTOR_PORT`
 - Protocol: KServe V2 (recommended over deprecated V1)
 
 **Implementation**:

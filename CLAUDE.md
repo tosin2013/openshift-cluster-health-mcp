@@ -253,6 +253,7 @@ For SSE clients:
 | `COORDINATION_ENGINE_URL` | `http://coordination-engine:8080` | If CE enabled | CE endpoint |
 | `ENABLE_KSERVE` | `false` | No | Enable KServe integration |
 | `KSERVE_NAMESPACE` | `self-healing-platform` | If KServe enabled | KServe models namespace |
+| `KSERVE_PREDICTOR_PORT` | `8080` | No | KServe predictor port (8080 for RawDeployment, 80 for Serverless) |
 | `ENABLE_PROMETHEUS` | `false` | No | Enable Prometheus integration (Phase 3) |
 | `PROMETHEUS_URL` | `https://prometheus-k8s.openshift-monitoring.svc:9091` | If Prom enabled | Prometheus endpoint |
 

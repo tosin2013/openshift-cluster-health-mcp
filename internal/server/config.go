@@ -38,6 +38,7 @@ type Config struct {
 	CoordinationEngineURL string // Coordination Engine base URL
 	PrometheusURL         string // Prometheus API URL
 	KServeNamespace       string // KServe models namespace
+	KServePredictorPort   int    // KServe predictor port (8080 for RawDeployment, 80 for Serverless)
 
 	// Feature Flags
 	EnableCoordinationEngine bool // Enable Coordination Engine integration
@@ -69,6 +70,7 @@ func NewConfig() *Config {
 		CoordinationEngineURL: getEnv("COORDINATION_ENGINE_URL", "http://coordination-engine:8080"),
 		PrometheusURL:         getEnv("PROMETHEUS_URL", "https://prometheus-k8s.openshift-monitoring.svc:9091"),
 		KServeNamespace:       getEnv("KSERVE_NAMESPACE", "self-healing-platform"),
+		KServePredictorPort:   getEnvInt("KSERVE_PREDICTOR_PORT", 8080), // Default 8080 for RawDeployment mode
 
 		// Feature Flags
 		EnableCoordinationEngine: getEnvBool("ENABLE_COORDINATION_ENGINE", false), // Disabled by default (Phase 1)

@@ -141,7 +141,8 @@ helm install mcp-server ./charts/openshift-cluster-health-mcp \
 | `ENABLE_COORDINATION_ENGINE` | Enable Coordination Engine integration | `false` | No |
 | `COORDINATION_ENGINE_URL` | Coordination Engine endpoint | - | If CE enabled |
 | `ENABLE_KSERVE` | Enable KServe integration | `false` | No |
-| `KSERVE_NAMESPACE` | Namespace for KServe models | - | If KServe enabled |
+| `KSERVE_NAMESPACE` | Namespace for KServe models | `self-healing-platform` | If KServe enabled |
+| `KSERVE_PREDICTOR_PORT` | KServe predictor port (8080 for RawDeployment, 80 for Serverless) | `8080` | No |
 | `ENABLE_PROMETHEUS` | Enable Prometheus integration | `false` | No |
 | `PROMETHEUS_URL` | Prometheus endpoint | - | If Prom enabled |
 
