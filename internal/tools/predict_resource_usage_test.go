@@ -25,7 +25,7 @@ func TestPredictResourceUsageTool_Description(t *testing.T) {
 		t.Errorf("Description seems too short: %s", desc)
 	}
 	// Verify key concepts are mentioned
-	if !(contains(desc, "predict") || contains(desc, "Predict")) {
+	if !contains(desc, "predict") && !contains(desc, "Predict") {
 		t.Error("Description should mention prediction capability")
 	}
 }
