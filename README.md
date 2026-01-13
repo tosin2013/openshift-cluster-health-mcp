@@ -7,13 +7,14 @@ Model Context Protocol (MCP) server for OpenShift cluster health monitoring and 
 
 ## Features
 
-- **MCP Tools**: 6 tools for cluster operations and AI-powered analysis
+- **MCP Tools**: 7 tools for cluster operations and AI-powered analysis
   - `get-cluster-health` - Real-time cluster health snapshot
   - `list-pods` - Pod listing with advanced filtering
   - `list-incidents` - Active incident tracking via Coordination Engine
   - `trigger-remediation` - Automated remediation actions
   - `analyze-anomalies` - ML-powered anomaly detection via KServe
   - `get-model-status` - KServe model health monitoring
+  - `predict-resource-usage` - Time-specific resource usage forecasting via ML models
 
 - **MCP Resources**: 3 resources for passive data access
   - `cluster://health` - Real-time cluster health (10s cache)
@@ -38,7 +39,7 @@ Model Context Protocol (MCP) server for OpenShift cluster health monitoring and 
 │  OpenShift Cluster Health MCP Server                    │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐ │
 │  │ MCP Tools   │  │ MCP Resources│  │ Cache (30s TTL)│ │
-│  │ (6 total)   │  │ (3 total)    │  │                │ │
+│  │ (7 total)   │  │ (3 total)    │  │                │ │
 │  └─────────────┘  └──────────────┘  └────────────────┘ │
 └──────┬──────────────┬──────────────┬──────────────┬─────┘
        │              │              │              │
@@ -228,6 +229,83 @@ const result = await client.callTool({
   arguments: {}
 });
 console.log("Cluster health:", result);
+```
+
+### Predict Resource Usage Tool
+
+The `predict-resource-usage` tool enables time-specific resource usage forecasting using ML models. It supports predictions for pods, deployments, namespaces, or cluster-wide infrastructure.
+
+**Input Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `target_time` | string | No | Target time in HH:MM format (24-hour). Defaults to current time + 1 hour. |
+| `target_date` | string | No | Target date in YYYY-MM-DD format. Defaults to today. |
+| `namespace` | string | No | Kubernetes namespace to scope the prediction. Supports wildcards (e.g., `openshift-*`). |
+| `deployment` | string | No | Specific deployment name for prediction. |
+| `pod` | string | No | Specific pod name for prediction. |
+| `metric` | string | No | Metric type: `cpu_usage`, `memory_usage`, or `both` (default). |
+| `scope` | string | No | Prediction scope: `pod`, `deployment`, `namespace` (default), or `cluster`. |
+
+**Example Usage**:
+
+```bash
+# Predict CPU usage at 3 PM today for a namespace
+curl -X POST http://localhost:8080/mcp/tools/predict-resource-usage/call \
+  -H 'Content-Type: application/json' \
+  -H 'X-MCP-Session-ID: <session-id>' \
+  -d '{
+    "target_time": "15:00",
+    "namespace": "self-healing-platform",
+    "metric": "cpu_usage",
+    "scope": "namespace"
+  }'
+
+# Predict memory usage for tomorrow morning
+curl -X POST http://localhost:8080/mcp/tools/predict-resource-usage/call \
+  -H 'Content-Type: application/json' \
+  -H 'X-MCP-Session-ID: <session-id>' \
+  -d '{
+    "target_time": "09:00",
+    "target_date": "2026-01-14",
+    "namespace": "openshift-monitoring",
+    "metric": "memory_usage"
+  }'
+
+# Cluster-wide prediction
+curl -X POST http://localhost:8080/mcp/tools/predict-resource-usage/call \
+  -H 'Content-Type: application/json' \
+  -H 'X-MCP-Session-ID: <session-id>' \
+  -d '{
+    "target_time": "00:00",
+    "scope": "cluster",
+    "metric": "both"
+  }'
+```
+
+**Example Response**:
+
+```json
+{
+  "status": "success",
+  "scope": "namespace",
+  "target": "self-healing-platform",
+  "current_metrics": {
+    "cpu_percent": 68.2,
+    "memory_percent": 74.5,
+    "timestamp": "2026-01-13T14:30:00Z"
+  },
+  "predicted_metrics": {
+    "cpu_percent": 74.5,
+    "memory_percent": 81.2,
+    "target_time": "2026-01-13T15:00:00Z",
+    "confidence": 0.92
+  },
+  "trend": "upward",
+  "recommendation": "Memory approaching 85% threshold. Consider monitoring or scaling.",
+  "model_used": "predictive-analytics",
+  "model_version": "v1"
+}
 ```
 
 ## Development

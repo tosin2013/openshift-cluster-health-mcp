@@ -154,6 +154,10 @@ func (s *MCPServer) registerTools() error {
 		// NEW: Create incident tool
 		createIncidentTool := tools.NewCreateIncidentTool(s.ceClient)
 		s.registerTool(createIncidentTool)
+
+		// NEW: Predict resource usage tool (time-specific forecasting)
+		predictResourceUsageTool := tools.NewPredictResourceUsageTool(s.ceClient, s.k8sClient)
+		s.registerTool(predictResourceUsageTool)
 	} else {
 		log.Printf("Skipping Coordination Engine tools (not enabled)")
 	}

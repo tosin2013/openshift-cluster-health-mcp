@@ -365,3 +365,63 @@ func (c *CoordinationEngineClient) HealthCheck(ctx context.Context) error {
 
 	return nil
 }
+
+// PredictResourceUsageRequest represents a request for time-specific resource prediction
+type PredictResourceUsageRequest struct {
+	Hour              int     `json:"hour"`               // Hour of day (0-23)
+	DayOfWeek         int     `json:"day_of_week"`        // Day of week (0=Monday, 6=Sunday)
+	CPURollingMean    float64 `json:"cpu_rolling_mean"`   // Current CPU rolling mean
+	MemoryRollingMean float64 `json:"memory_rolling_mean"` // Current memory rolling mean
+	Namespace         string  `json:"namespace,omitempty"` // Target namespace (optional)
+	Deployment        string  `json:"deployment,omitempty"` // Target deployment (optional)
+	Pod               string  `json:"pod,omitempty"`       // Target pod (optional)
+	Scope             string  `json:"scope,omitempty"`     // Scope: pod, deployment, namespace, cluster
+}
+
+// PredictResourceUsageResponse represents the prediction response
+type PredictResourceUsageResponse struct {
+	Status             string  `json:"status"`
+	PredictedCPU       float64 `json:"predicted_cpu_percent"`
+	PredictedMemory    float64 `json:"predicted_memory_percent"`
+	Confidence         float64 `json:"confidence"`
+	Trend              string  `json:"trend"`       // upward, downward, stable
+	ModelUsed          string  `json:"model_used"`
+	ModelVersion       string  `json:"model_version,omitempty"`
+	Recommendation     string  `json:"recommendation,omitempty"`
+	PredictedTimestamp string  `json:"predicted_timestamp,omitempty"`
+}
+
+// PredictResourceUsage calls the coordination engine's /api/v1/predict endpoint
+// for time-specific resource usage forecasting
+func (c *CoordinationEngineClient) PredictResourceUsage(ctx context.Context, req *PredictResourceUsageRequest) (*PredictResourceUsageResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/predict", c.baseURL)
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("prediction failed (code %d): %s", resp.StatusCode, string(body))
+	}
+
+	var result PredictResourceUsageResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
