@@ -383,7 +383,7 @@ type PredictResourceUsageRequest struct {
 	Scope             string  `json:"scope,omitempty"`     // Scope: pod, deployment, namespace, cluster
 }
 
-// PredictResourceUsageResponse represents the prediction response
+// PredictResourceUsageResponse represents the prediction response (public interface)
 type PredictResourceUsageResponse struct {
 	Status             string  `json:"status"`
 	PredictedCPU       float64 `json:"predicted_cpu_percent"`
@@ -394,6 +394,34 @@ type PredictResourceUsageResponse struct {
 	ModelVersion       string  `json:"model_version,omitempty"`
 	Recommendation     string  `json:"recommendation,omitempty"`
 	PredictedTimestamp string  `json:"predicted_timestamp,omitempty"`
+}
+
+// coordinationEnginePredictResponse represents the actual nested response from coordination engine
+type coordinationEnginePredictResponse struct {
+	Status      string `json:"status"`
+	Scope       string `json:"scope"`
+	Target      string `json:"target"`
+	Predictions struct {
+		CPUPercent    float64 `json:"cpu_percent"`
+		MemoryPercent float64 `json:"memory_percent"`
+	} `json:"predictions"`
+	ModelInfo struct {
+		Name       string  `json:"name"`
+		Version    string  `json:"version"`
+		Confidence float64 `json:"confidence"`
+	} `json:"model_info"`
+	CurrentMetrics struct {
+		CPURollingMean    float64 `json:"cpu_rolling_mean"`
+		MemoryRollingMean float64 `json:"memory_rolling_mean"`
+		Timestamp         string  `json:"timestamp"`
+	} `json:"current_metrics"`
+	TargetTime struct {
+		Hour         int    `json:"hour"`
+		DayOfWeek    int    `json:"day_of_week"`
+		ISOTimestamp string `json:"iso_timestamp"`
+	} `json:"target_time"`
+	Trend          string `json:"trend,omitempty"`
+	Recommendation string `json:"recommendation,omitempty"`
 }
 
 // PredictResourceUsage calls the coordination engine's /api/v1/predict endpoint
@@ -423,10 +451,24 @@ func (c *CoordinationEngineClient) PredictResourceUsage(ctx context.Context, req
 		return nil, fmt.Errorf("prediction failed (code %d): %s", resp.StatusCode, string(body))
 	}
 
-	var result PredictResourceUsageResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	// Parse the nested response from coordination engine
+	var ceResp coordinationEnginePredictResponse
+	if err := json.NewDecoder(resp.Body).Decode(&ceResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return &result, nil
+	// Convert to the public response format
+	result := &PredictResourceUsageResponse{
+		Status:             ceResp.Status,
+		PredictedCPU:       ceResp.Predictions.CPUPercent,
+		PredictedMemory:    ceResp.Predictions.MemoryPercent,
+		Confidence:         ceResp.ModelInfo.Confidence,
+		Trend:              ceResp.Trend,
+		ModelUsed:          ceResp.ModelInfo.Name,
+		ModelVersion:       ceResp.ModelInfo.Version,
+		Recommendation:     ceResp.Recommendation,
+		PredictedTimestamp: ceResp.TargetTime.ISOTimestamp,
+	}
+
+	return result, nil
 }
