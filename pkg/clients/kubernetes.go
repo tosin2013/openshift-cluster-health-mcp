@@ -386,6 +386,8 @@ type ResourceQuotaInfo struct {
 	MemoryUsedBytes      int64  `json:"memory_used_bytes"`
 	CPURequestMillicores int64  `json:"cpu_request_millicores"`
 	MemoryRequestBytes   int64  `json:"memory_request_bytes"`
+	PodCountLimit        int    `json:"pod_count_limit"`
+	PodCountUsed         int    `json:"pod_count_used"`
 }
 
 // GetResourceQuota returns resource quota information for a namespace
@@ -420,6 +422,10 @@ func (c *K8sClient) GetResourceQuota(ctx context.Context, namespace string) (*Re
 	if mem, ok := quota.Spec.Hard[corev1.ResourceRequestsMemory]; ok {
 		info.MemoryRequestBytes = mem.Value()
 	}
+	// Extract pod count limit
+	if pods, ok := quota.Spec.Hard[corev1.ResourcePods]; ok {
+		info.PodCountLimit = int(pods.Value())
+	}
 
 	// Extract used values
 	if cpu, ok := quota.Status.Used[corev1.ResourceLimitsCPU]; ok {
@@ -428,6 +434,10 @@ func (c *K8sClient) GetResourceQuota(ctx context.Context, namespace string) (*Re
 	if mem, ok := quota.Status.Used[corev1.ResourceLimitsMemory]; ok {
 		info.MemoryUsedBytes = mem.Value()
 	}
+	// Extract used pod count
+	if pods, ok := quota.Status.Used[corev1.ResourcePods]; ok {
+		info.PodCountUsed = int(pods.Value())
+	}
 
 	// If limits not set, use requests as fallback
 	if info.CPULimitMillicores == 0 && info.CPURequestMillicores > 0 {
@@ -435,6 +445,10 @@ func (c *K8sClient) GetResourceQuota(ctx context.Context, namespace string) (*Re
 	}
 	if info.MemoryLimitBytes == 0 && info.MemoryRequestBytes > 0 {
 		info.MemoryLimitBytes = info.MemoryRequestBytes
+	}
+	// Default pod limit if not set
+	if info.PodCountLimit == 0 {
+		info.PodCountLimit = 100 // Default to 100 pods
 	}
 
 	return info, nil
