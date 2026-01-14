@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -318,4 +319,123 @@ func (c *K8sClient) GetConfig() *rest.Config {
 func (c *K8sClient) Close() error {
 	// No-op for now, but can be extended if needed
 	return nil
+}
+
+// DeploymentInfo represents deployment information for scaling analysis
+type DeploymentInfo struct {
+	Name              string `json:"name"`
+	Namespace         string `json:"namespace"`
+	Replicas          int    `json:"replicas"`
+	AvailableReplicas int    `json:"available_replicas"`
+	CPURequest        int64  `json:"cpu_request_millicores"`
+	MemoryRequest     int64  `json:"memory_request_bytes"`
+	CPULimit          int64  `json:"cpu_limit_millicores"`
+	MemoryLimit       int64  `json:"memory_limit_bytes"`
+}
+
+// GetDeployment returns deployment information
+func (c *K8sClient) GetDeployment(ctx context.Context, namespace, name string) (*DeploymentInfo, error) {
+	deployment, err := c.clientset.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get deployment %s/%s: %w", namespace, name, err)
+	}
+
+	info := &DeploymentInfo{
+		Name:              deployment.Name,
+		Namespace:         deployment.Namespace,
+		Replicas:          int(*deployment.Spec.Replicas),
+		AvailableReplicas: int(deployment.Status.AvailableReplicas),
+	}
+
+	// Extract resource requests/limits from the first container
+	if len(deployment.Spec.Template.Spec.Containers) > 0 {
+		container := deployment.Spec.Template.Spec.Containers[0]
+		if cpu := container.Resources.Requests.Cpu(); cpu != nil {
+			info.CPURequest = cpu.MilliValue()
+		}
+		if mem := container.Resources.Requests.Memory(); mem != nil {
+			info.MemoryRequest = mem.Value()
+		}
+		if cpu := container.Resources.Limits.Cpu(); cpu != nil {
+			info.CPULimit = cpu.MilliValue()
+		}
+		if mem := container.Resources.Limits.Memory(); mem != nil {
+			info.MemoryLimit = mem.Value()
+		}
+	}
+
+	return info, nil
+}
+
+// ListDeployments returns all deployments in a namespace
+func (c *K8sClient) ListDeployments(ctx context.Context, namespace string) (*appsv1.DeploymentList, error) {
+	deployments, err := c.clientset.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list deployments in namespace %s: %w", namespace, err)
+	}
+	return deployments, nil
+}
+
+// ResourceQuotaInfo represents resource quota information for a namespace
+type ResourceQuotaInfo struct {
+	Name                 string `json:"name"`
+	Namespace            string `json:"namespace"`
+	CPULimitMillicores   int64  `json:"cpu_limit_millicores"`
+	MemoryLimitBytes     int64  `json:"memory_limit_bytes"`
+	CPUUsedMillicores    int64  `json:"cpu_used_millicores"`
+	MemoryUsedBytes      int64  `json:"memory_used_bytes"`
+	CPURequestMillicores int64  `json:"cpu_request_millicores"`
+	MemoryRequestBytes   int64  `json:"memory_request_bytes"`
+}
+
+// GetResourceQuota returns resource quota information for a namespace
+func (c *K8sClient) GetResourceQuota(ctx context.Context, namespace string) (*ResourceQuotaInfo, error) {
+	quotaList, err := c.clientset.CoreV1().ResourceQuotas(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list resource quotas in namespace %s: %w", namespace, err)
+	}
+
+	if len(quotaList.Items) == 0 {
+		return nil, fmt.Errorf("no resource quota found in namespace %s", namespace)
+	}
+
+	// Use the first quota (typically there's only one)
+	quota := quotaList.Items[0]
+
+	info := &ResourceQuotaInfo{
+		Name:      quota.Name,
+		Namespace: quota.Namespace,
+	}
+
+	// Extract hard limits
+	if cpu, ok := quota.Spec.Hard[corev1.ResourceLimitsCPU]; ok {
+		info.CPULimitMillicores = cpu.MilliValue()
+	}
+	if mem, ok := quota.Spec.Hard[corev1.ResourceLimitsMemory]; ok {
+		info.MemoryLimitBytes = mem.Value()
+	}
+	if cpu, ok := quota.Spec.Hard[corev1.ResourceRequestsCPU]; ok {
+		info.CPURequestMillicores = cpu.MilliValue()
+	}
+	if mem, ok := quota.Spec.Hard[corev1.ResourceRequestsMemory]; ok {
+		info.MemoryRequestBytes = mem.Value()
+	}
+
+	// Extract used values
+	if cpu, ok := quota.Status.Used[corev1.ResourceLimitsCPU]; ok {
+		info.CPUUsedMillicores = cpu.MilliValue()
+	}
+	if mem, ok := quota.Status.Used[corev1.ResourceLimitsMemory]; ok {
+		info.MemoryUsedBytes = mem.Value()
+	}
+
+	// If limits not set, use requests as fallback
+	if info.CPULimitMillicores == 0 && info.CPURequestMillicores > 0 {
+		info.CPULimitMillicores = info.CPURequestMillicores
+	}
+	if info.MemoryLimitBytes == 0 && info.MemoryRequestBytes > 0 {
+		info.MemoryLimitBytes = info.MemoryRequestBytes
+	}
+
+	return info, nil
 }

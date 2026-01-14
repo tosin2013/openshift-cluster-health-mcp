@@ -158,6 +158,10 @@ func (s *MCPServer) registerTools() error {
 		// NEW: Predict resource usage tool (time-specific forecasting)
 		predictResourceUsageTool := tools.NewPredictResourceUsageTool(s.ceClient, s.k8sClient)
 		s.registerTool(predictResourceUsageTool)
+
+		// NEW: Analyze scaling impact tool (capacity planning)
+		analyzeScalingImpactTool := tools.NewAnalyzeScalingImpactTool(s.ceClient, s.k8sClient)
+		s.registerTool(analyzeScalingImpactTool)
 	} else {
 		log.Printf("Skipping Coordination Engine tools (not enabled)")
 	}
