@@ -171,10 +171,20 @@ func (s *MCPServer) registerTools() error {
 	}
 
 	// Register KServe tools if enabled
-	if s.kserve != nil {
-		analyzeAnomaliesTool := tools.NewAnalyzeAnomaliesTool(s.kserve)
+	if s.kserve != nil && s.ceClient != nil {
+		// analyze-anomalies requires both KServe and Coordination Engine
+		// The Coordination Engine handles feature engineering (45 features) and calls KServe
+		analyzeAnomaliesTool := tools.NewAnalyzeAnomaliesTool(s.kserve, s.ceClient)
 		s.registerTool(analyzeAnomaliesTool)
 
+		getModelStatusTool := tools.NewGetModelStatusTool(s.kserve)
+		s.registerTool(getModelStatusTool)
+
+		listModelsTool := tools.NewListModelsTool(s.kserve)
+		s.registerTool(listModelsTool)
+	} else if s.kserve != nil && s.ceClient == nil {
+		log.Printf("Skipping analyze-anomalies tool (requires Coordination Engine for feature engineering)")
+		// Register other KServe tools that don't require Coordination Engine
 		getModelStatusTool := tools.NewGetModelStatusTool(s.kserve)
 		s.registerTool(getModelStatusTool)
 

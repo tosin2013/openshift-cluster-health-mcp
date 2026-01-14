@@ -116,11 +116,16 @@ type TriggerRemediationResponse struct {
 
 // AnalyzeAnomaliesRequest represents a request to analyze anomalies
 type AnalyzeAnomaliesRequest struct {
-	TimeRange          string        `json:"timeRange,omitempty"` // e.g., "1h", "24h"
-	Metrics            []interface{} `json:"metrics"`             // Can be metric names or full metric objects
-	Threshold          *float64      `json:"threshold,omitempty"` // 0.0-1.0
+	TimeRange          string        `json:"timeRange,omitempty"`     // e.g., "1h", "24h"
+	Metrics            []interface{} `json:"metrics,omitempty"`       // Can be metric names or full metric objects
+	Threshold          *float64      `json:"threshold,omitempty"`     // 0.0-1.0
 	IncludePredictions *bool         `json:"includePredictions,omitempty"`
-	Models             []string      `json:"models,omitempty"` // Specify which ML models to use
+	Models             []string      `json:"models,omitempty"`        // Specify which ML models to use
+	ModelName          string        `json:"modelName,omitempty"`     // Primary model name (e.g., "anomaly-detector")
+	Namespace          string        `json:"namespace,omitempty"`     // Kubernetes namespace to scope analysis
+	Deployment         string        `json:"deployment,omitempty"`    // Specific deployment name to filter
+	Pod                string        `json:"pod,omitempty"`           // Specific pod name to filter
+	LabelSelector      string        `json:"labelSelector,omitempty"` // Kubernetes label selector (e.g., "app=flask")
 }
 
 // AnomalyPattern represents a detected anomaly pattern

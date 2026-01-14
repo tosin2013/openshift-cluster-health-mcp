@@ -11,13 +11,15 @@ import (
 
 // AnalyzeAnomaliesTool provides MCP tool for ML-powered anomaly detection
 type AnalyzeAnomaliesTool struct {
-	kserveClient *clients.KServeClient
+	kserveClient        *clients.KServeClient
+	coordinationEngine  *clients.CoordinationEngineClient
 }
 
 // NewAnalyzeAnomaliesTool creates a new analyze-anomalies tool
-func NewAnalyzeAnomaliesTool(kserveClient *clients.KServeClient) *AnalyzeAnomaliesTool {
+func NewAnalyzeAnomaliesTool(kserveClient *clients.KServeClient, coordinationEngine *clients.CoordinationEngineClient) *AnalyzeAnomaliesTool {
 	return &AnalyzeAnomaliesTool{
-		kserveClient: kserveClient,
+		kserveClient:       kserveClient,
+		coordinationEngine: coordinationEngine,
 	}
 }
 
@@ -28,7 +30,8 @@ func (t *AnalyzeAnomaliesTool) Name() string {
 
 // Description returns the tool description
 func (t *AnalyzeAnomaliesTool) Description() string {
-	return "Analyze Prometheus metrics for anomalies using ML-powered KServe models. " +
+	return "Analyze Prometheus metrics for anomalies using ML-powered models via the Coordination Engine. " +
+		"The Coordination Engine handles feature engineering (45 features from 5 base metrics) and model inference. " +
 		"Supports filtering by namespace, deployment, pod, or label selector for targeted analysis. " +
 		"Returns anomaly scores with confidence levels and natural language explanations."
 }
@@ -129,7 +132,7 @@ func (t *AnalyzeAnomaliesTool) Execute(ctx context.Context, args map[string]inte
 	input := AnalyzeAnomaliesInput{
 		TimeRange: "1h",
 		Threshold: 0.7,
-		ModelName: "predictive-analytics",
+		ModelName: "anomaly-detector",
 	}
 
 	if argsJSON, err := json.Marshal(args); err == nil {
@@ -149,54 +152,47 @@ func (t *AnalyzeAnomaliesTool) Execute(ctx context.Context, args map[string]inte
 	// Determine filter target description
 	filterTarget := t.determineFilterTarget(input)
 
-	// Build prediction request with enhanced filtering
-	instances := []map[string]interface{}{
-		{
-			"metric":         input.Metric,
-			"namespace":      input.Namespace,
-			"deployment":     input.Deployment,
-			"pod":            input.Pod,
-			"label_selector": input.LabelSelector,
-			"pod_regex":      t.buildPodRegex(input),
-			"time_range":     input.TimeRange,
-		},
+	// Call Coordination Engine for anomaly analysis
+	// The Coordination Engine handles:
+	// 1. Querying Prometheus for the 5 base metrics
+	// 2. Feature engineering (45 features: 5 metrics × 9 features each)
+	// 3. Calling KServe with properly formatted numeric arrays
+	threshold := input.Threshold
+	ceRequest := &clients.AnalyzeAnomaliesRequest{
+		TimeRange:     input.TimeRange,
+		Metrics:       []interface{}{input.Metric},
+		Threshold:     &threshold,
+		ModelName:     input.ModelName,
+		Namespace:     input.Namespace,
+		Deployment:    input.Deployment,
+		Pod:           input.Pod,
+		LabelSelector: input.LabelSelector,
 	}
 
-	// Call KServe model for prediction
-	prediction, err := t.kserveClient.Predict(ctx, input.ModelName, instances)
+	ceResponse, err := t.coordinationEngine.AnalyzeAnomalies(ctx, ceRequest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get anomaly predictions: %w", err)
 	}
 
-	// Parse predictions and build anomaly results
+	// Convert coordination engine response to tool output format
 	anomalies := []AnomalyResult{}
 	var totalScore float64
 	var maxScore float64
 
-	if predList, ok := prediction.Predictions.([]interface{}); ok {
-		for _, pred := range predList {
-			if predMap, ok := pred.(map[string]interface{}); ok {
-				score := getFloat64(predMap, "anomaly_score")
-				confidence := getFloat64(predMap, "confidence")
-
-				// Only include anomalies above threshold
-				if score >= input.Threshold {
-					anomaly := AnomalyResult{
-						Timestamp:    getString(predMap, "timestamp"),
-						MetricName:   input.Metric,
-						Value:        getFloat64(predMap, "value"),
-						AnomalyScore: score,
-						Confidence:   confidence,
-						Severity:     determineSeverity(score),
-						Explanation:  generateExplanation(input.Metric, score, confidence),
-					}
-					anomalies = append(anomalies, anomaly)
-					totalScore += score
-					if score > maxScore {
-						maxScore = score
-					}
-				}
-			}
+	for _, pattern := range ceResponse.Patterns {
+		anomaly := AnomalyResult{
+			Timestamp:    pattern.Timestamp,
+			MetricName:   pattern.Metric,
+			Value:        pattern.Value,
+			AnomalyScore: pattern.Score,
+			Confidence:   pattern.Score, // Use score as confidence if not separately provided
+			Severity:     pattern.Severity,
+			Explanation:  generateExplanation(pattern.Metric, pattern.Score, pattern.Score),
+		}
+		anomalies = append(anomalies, anomaly)
+		totalScore += pattern.Score
+		if pattern.Score > maxScore {
+			maxScore = pattern.Score
 		}
 	}
 
@@ -206,32 +202,47 @@ func (t *AnalyzeAnomaliesTool) Execute(ctx context.Context, args map[string]inte
 		avgScore = totalScore / float64(len(anomalies))
 	}
 
+	// Determine model used from response or input
+	modelUsed := input.ModelName
+	if len(ceResponse.Summary.ModelsUsed) > 0 {
+		modelUsed = strings.Join(ceResponse.Summary.ModelsUsed, ", ")
+	}
+
 	// Build output
 	output := AnalyzeAnomaliesOutput{
-		Status:        "success",
+		Status:        ceResponse.Status,
 		Metric:        input.Metric,
-		TimeRange:     input.TimeRange,
+		TimeRange:     ceResponse.TimeRange,
 		Namespace:     input.Namespace,
 		Deployment:    input.Deployment,
 		Pod:           input.Pod,
 		LabelSelector: input.LabelSelector,
 		FilterTarget:  filterTarget,
-		ModelUsed:     input.ModelName,
+		ModelUsed:     modelUsed,
 		Anomalies:     anomalies,
 		AnomalyCount:  len(anomalies),
 		MaxScore:      maxScore,
 		AverageScore:  avgScore,
 	}
 
+	// Use recommendations from coordination engine if available
+	if len(ceResponse.Recommendations) > 0 {
+		output.Recommendation = strings.Join(ceResponse.Recommendations, " ")
+	}
+
 	// Generate message and recommendation with filter context
 	if len(anomalies) == 0 {
 		output.Message = fmt.Sprintf("No anomalies detected in %s for %s over the last %s (threshold: %.2f)",
 			input.Metric, filterTarget, input.TimeRange, input.Threshold)
-		output.Recommendation = "Metrics appear normal for the specified target. Continue monitoring."
+		if output.Recommendation == "" {
+			output.Recommendation = "Metrics appear normal for the specified target. Continue monitoring."
+		}
 	} else {
 		output.Message = fmt.Sprintf("Detected %d anomalies in %s for %s over the last %s (max score: %.2f)",
 			len(anomalies), input.Metric, filterTarget, input.TimeRange, maxScore)
-		output.Recommendation = generateRecommendation(input.Metric, maxScore, len(anomalies))
+		if output.Recommendation == "" {
+			output.Recommendation = generateRecommendation(input.Metric, maxScore, len(anomalies))
+		}
 	}
 
 	return output, nil
