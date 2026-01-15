@@ -194,14 +194,15 @@ func (t *PredictResourceUsageTool) Execute(ctx context.Context, args map[string]
 		return nil, fmt.Errorf("failed to get prediction from coordination engine: %w", err)
 	}
 
-	// Build output
+	// Build output - use current metrics from Coordination Engine (Prometheus-based)
+	// instead of heuristic calculations
 	output := PredictResourceUsageOutput{
 		Status: predResp.Status,
 		Scope:  input.Scope,
 		Target: target,
 		CurrentMetrics: CurrentMetrics{
-			CPUPercent:    currentMetrics.CPUPercent,
-			MemoryPercent: currentMetrics.MemoryPercent,
+			CPUPercent:    predResp.CurrentCPU,    // Use CE's Prometheus data
+			MemoryPercent: predResp.CurrentMemory, // Use CE's Prometheus data
 			Timestamp:     time.Now().UTC().Format(time.RFC3339),
 		},
 		PredictedMetrics: PredictedMetrics{
@@ -224,11 +225,11 @@ func (t *PredictResourceUsageTool) Execute(ctx context.Context, args map[string]
 		output.PredictedMetrics.MemoryPercent = predResp.PredictedMemory
 	}
 
-	// Generate recommendation
+	// Generate recommendation using CE's Prometheus-based current metrics
 	output.Recommendation = t.generateRecommendation(
 		input.Metric,
-		currentMetrics.CPUPercent,
-		currentMetrics.MemoryPercent,
+		predResp.CurrentCPU,    // Use CE's Prometheus data
+		predResp.CurrentMemory, // Use CE's Prometheus data
 		predResp.PredictedCPU,
 		predResp.PredictedMemory,
 		predResp.Trend,

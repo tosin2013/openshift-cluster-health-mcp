@@ -388,6 +388,8 @@ type PredictResourceUsageResponse struct {
 	Status             string  `json:"status"`
 	PredictedCPU       float64 `json:"predicted_cpu_percent"`
 	PredictedMemory    float64 `json:"predicted_memory_percent"`
+	CurrentCPU         float64 `json:"current_cpu_percent"`         // From Prometheus via CE
+	CurrentMemory      float64 `json:"current_memory_percent"`      // From Prometheus via CE
 	Confidence         float64 `json:"confidence"`
 	Trend              string  `json:"trend"`       // upward, downward, stable
 	ModelUsed          string  `json:"model_used"`
@@ -462,6 +464,8 @@ func (c *CoordinationEngineClient) PredictResourceUsage(ctx context.Context, req
 		Status:             ceResp.Status,
 		PredictedCPU:       ceResp.Predictions.CPUPercent,
 		PredictedMemory:    ceResp.Predictions.MemoryPercent,
+		CurrentCPU:         ceResp.CurrentMetrics.CPURollingMean,    // Use Prometheus data from CE
+		CurrentMemory:      ceResp.CurrentMetrics.MemoryRollingMean, // Use Prometheus data from CE
 		Confidence:         ceResp.ModelInfo.Confidence,
 		Trend:              ceResp.Trend,
 		ModelUsed:          ceResp.ModelInfo.Name,
