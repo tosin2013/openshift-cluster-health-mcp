@@ -13,7 +13,11 @@ func TestNewK8sClient(t *testing.T) {
 		t.Skipf("Skipping: unable to create Kubernetes client: %v", err)
 		return
 	}
-	defer testClient.Close()
+	defer func() {
+		if err := testClient.Close(); err != nil {
+			t.Logf("Error closing test client: %v", err)
+		}
+	}()
 
 	tests := []struct {
 		name    string

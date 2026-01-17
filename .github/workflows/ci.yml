@@ -166,29 +166,6 @@ jobs:
           echo "==================================="
           echo ""
 
-      - name: TEST - Try direct oc login (temporary)
-        run: |
-          echo "=== TEMPORARY TEST: Trying direct oc login ==="
-
-          # Install oc CLI
-          curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz
-          tar -xzf openshift-client-linux.tar.gz
-          sudo mv oc /usr/local/bin/
-
-          # Try direct login
-          echo "Attempting: oc login --token=sha256~h11GkVdk5gJ0QzskS98aNPvMsBcebculI4kImj3era0 --server=https://api.cluster-x89f5.x89f5.sandbox2920.opentlc.com:6443"
-
-          if oc login --token=sha256~h11GkVdk5gJ0QzskS98aNPvMsBcebculI4kImj3era0 --server=https://api.cluster-x89f5.x89f5.sandbox2920.opentlc.com:6443 --insecure-skip-tls-verify=true; then
-            echo "✅ SUCCESS: oc login worked!"
-            oc whoami
-            oc get nodes || echo "⚠️  Login succeeded but cannot list nodes"
-          else
-            echo "❌ FAILED: oc login failed"
-            echo "This confirms GitHub Actions cannot reach OpenTLC cluster"
-          fi
-
-          echo "=== END TEMPORARY TEST ==="
-
       - name: Run tests
         run: |
           if [ -f "$HOME/.kube/config" ]; then
