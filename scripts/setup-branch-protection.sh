@@ -174,6 +174,8 @@ main() {
   echo "  - release-4.19 (2 required approvals)"
   echo "  - release-4.20 (2 required approvals)"
   echo
+  print_info "Note: release-4.17 deleted on 2026-01-17 (OpenShift 4.17 EOL)"
+  echo
   echo "Required status checks (${#REQUIRED_CHECKS[@]} total):"
   for check in "${REQUIRED_CHECKS[@]}"; do
     echo "  - ${check}"

@@ -227,6 +227,9 @@ main() {
   check_gh_cli
   echo
 
+  print_info "Note: release-4.17 deleted on 2026-01-17 (OpenShift 4.17 EOL)"
+  echo
+
   local total_issues=0
 
   # Verify main branch (1 approval)
