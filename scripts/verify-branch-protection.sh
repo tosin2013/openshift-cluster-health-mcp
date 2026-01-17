@@ -99,7 +99,7 @@ verify_branch() {
 
   if [[ -z "$status_checks" ]]; then
     print_error "No required status checks configured"
-    ((issues++))
+    ((issues++)) || true
   else
     print_success "Required status checks configured"
     echo "  Checks ($(echo "$status_checks" | wc -l)):"
@@ -113,7 +113,7 @@ verify_branch() {
         : # Check found, no action needed
       else
         print_warning "  Missing expected check: ${expected}"
-        ((issues++))
+        ((issues++)) || true
       fi
     done
   fi
@@ -125,7 +125,7 @@ verify_branch() {
     print_success "Require branches to be up to date: enabled"
   else
     print_error "Require branches to be up to date: disabled"
-    ((issues++))
+    ((issues++)) || true
   fi
 
   # Verify pull request reviews
@@ -134,7 +134,7 @@ verify_branch() {
 
   if [[ "$pr_reviews" == "null" || "$pr_reviews" == "" ]]; then
     print_error "No pull request review requirements"
-    ((issues++))
+    ((issues++)) || true
   else
     local actual_reviews
     actual_reviews=$(echo "$pr_reviews" | jq -r '.required_approving_review_count' 2>/dev/null || echo "0")
@@ -143,7 +143,7 @@ verify_branch() {
       print_success "Required approving reviews: ${actual_reviews} (expected: ${expected_reviews})"
     else
       print_error "Required approving reviews: ${actual_reviews} (expected: ${expected_reviews})"
-      ((issues++))
+      ((issues++)) || true
     fi
 
     local dismiss_stale
@@ -152,7 +152,7 @@ verify_branch() {
       print_success "Dismiss stale reviews: enabled"
     else
       print_warning "Dismiss stale reviews: disabled"
-      ((issues++))
+      ((issues++)) || true
     fi
 
     local require_code_owners
@@ -161,7 +161,7 @@ verify_branch() {
       print_success "Require code owner reviews: enabled"
     else
       print_warning "Require code owner reviews: disabled"
-      ((issues++))
+      ((issues++)) || true
     fi
   fi
 
@@ -172,7 +172,7 @@ verify_branch() {
     print_success "Require conversation resolution: enabled"
   else
     print_warning "Require conversation resolution: disabled"
-    ((issues++))
+    ((issues++)) || true
   fi
 
   # Verify enforce admins
@@ -191,7 +191,7 @@ verify_branch() {
     print_success "Allow force pushes: disabled"
   else
     print_error "Allow force pushes: enabled (should be disabled)"
-    ((issues++))
+    ((issues++)) || true
   fi
 
   # Verify deletion settings
@@ -201,7 +201,7 @@ verify_branch() {
     print_success "Allow deletions: disabled"
   else
     print_error "Allow deletions: enabled (should be disabled)"
-    ((issues++))
+    ((issues++)) || true
   fi
 
   echo
@@ -233,7 +233,7 @@ main() {
   if verify_branch "main" 1; then
     : # Success
   else
-    ((total_issues++))
+    ((total_issues++)) || true
   fi
 
   # Verify release branches (2 approvals)
@@ -242,7 +242,7 @@ main() {
       if verify_branch "$release" 2; then
         : # Success
       else
-        ((total_issues++))
+        ((total_issues++)) || true
       fi
     else
       print_info "Skipping ${release} (branch does not exist)"
