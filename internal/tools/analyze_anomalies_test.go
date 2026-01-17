@@ -19,7 +19,7 @@ func TestAnalyzeAnomaliesTool_Description(t *testing.T) {
 	assert.Contains(t, desc, "anomalies")
 	assert.Contains(t, desc, "deployment")
 	assert.Contains(t, desc, "pod")
-	assert.Contains(t, desc, "label selector")
+	assert.Contains(t, desc, "label_selector")
 }
 
 func TestAnalyzeAnomaliesTool_InputSchema(t *testing.T) {
