@@ -102,7 +102,7 @@ jobs:
           echo "Running integration tests against OpenShift cluster..."
           go test -v -race -coverprofile=coverage.out ./...
         env:
-          KUBECONFIG: ${{ env.HOME }}/.kube/config
+          KUBECONFIG: $HOME/.kube/config
 
       - name: Install Helm
         if: inputs.deploy == true

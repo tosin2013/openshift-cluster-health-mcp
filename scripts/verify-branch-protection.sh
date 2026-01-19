@@ -52,11 +52,17 @@ print_error() {
   echo -e "${RED}✗ ${1}${NC}"
 }
 
-# Function to check if gh CLI is available
+# Function to check if gh CLI and jq are available
 check_gh_cli() {
   if ! command -v gh &> /dev/null; then
     print_error "GitHub CLI (gh) is not installed"
     echo "Install it from: https://cli.github.com/"
+    exit 1
+  fi
+
+  if ! command -v jq &> /dev/null; then
+    print_error "jq is not installed"
+    echo "Install it from: https://jqlang.github.io/jq/"
     exit 1
   fi
 

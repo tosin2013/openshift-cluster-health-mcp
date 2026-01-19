@@ -34,7 +34,8 @@ jobs:
       - name: Determine Kubernetes version for branch
         id: k8s-version
         run: |
-          BRANCH_NAME="${{ github.ref_name }}"
+          # For PRs, use base_ref (target branch). For pushes, use ref_name (source branch)
+          BRANCH_NAME="${{ github.base_ref || github.ref_name }}"
           case $BRANCH_NAME in
             main|release-4.18)
               K8S_VERSION="v1.31.0"

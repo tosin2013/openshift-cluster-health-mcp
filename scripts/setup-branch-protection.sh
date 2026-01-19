@@ -67,6 +67,14 @@ check_prerequisites() {
   fi
   print_success "GitHub CLI installed"
 
+  # Check if jq is installed
+  if ! command -v jq &> /dev/null; then
+    print_error "jq is not installed"
+    echo "Install it from: https://jqlang.github.io/jq/"
+    exit 1
+  fi
+  print_success "jq installed"
+
   # Check if authenticated
   if ! gh auth status &> /dev/null; then
     print_error "Not authenticated with GitHub CLI"
