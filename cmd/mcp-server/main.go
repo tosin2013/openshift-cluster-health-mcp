@@ -104,7 +104,7 @@ func printConfig(cfg *server.Config) {
 
 	fmt.Printf("  KServe:              %v", cfg.EnableKServe)
 	if cfg.EnableKServe {
-		fmt.Printf(" (namespace: %s)", cfg.KServeNamespace)
+		fmt.Printf(" (namespace: %s, port: %d)", cfg.KServeNamespace, cfg.KServePredictorPort)
 	}
 	fmt.Println()
 	fmt.Println("──────────────────────────────────────────────────────────")

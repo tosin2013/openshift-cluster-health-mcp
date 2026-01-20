@@ -278,6 +278,7 @@ Add to your `values.yaml`:
 env:
   ENABLE_KSERVE: "true"
   KSERVE_NAMESPACE: "self-healing-platform"
+  KSERVE_PREDICTOR_PORT: "8080"  # 8080 for RawDeployment mode, 80 for Serverless mode
 ```
 
 ### Enable Prometheus (Enhanced Metrics)

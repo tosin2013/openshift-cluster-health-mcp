@@ -4,16 +4,18 @@ Model Context Protocol (MCP) server for OpenShift cluster health monitoring and 
 
 ![CI Status](https://github.com/openshift-aiops/openshift-cluster-health-mcp/workflows/CI/badge.svg)
 [![Go Report Card](https://goreportcard.com/badge/github.com/openshift-aiops/openshift-cluster-health-mcp)](https://goreportcard.com/report/github.com/openshift-aiops/openshift-cluster-health-mcp)
+![Branch Protection](https://img.shields.io/badge/branch-protected-green)
 
 ## Features
 
-- **MCP Tools**: 6 tools for cluster operations and AI-powered analysis
+- **MCP Tools**: 7 tools for cluster operations and AI-powered analysis
   - `get-cluster-health` - Real-time cluster health snapshot
   - `list-pods` - Pod listing with advanced filtering
   - `list-incidents` - Active incident tracking via Coordination Engine
   - `trigger-remediation` - Automated remediation actions
   - `analyze-anomalies` - ML-powered anomaly detection via KServe
   - `get-model-status` - KServe model health monitoring
+  - `predict-resource-usage` - Time-specific resource usage forecasting via ML models
 
 - **MCP Resources**: 3 resources for passive data access
   - `cluster://health` - Real-time cluster health (10s cache)
@@ -38,7 +40,7 @@ Model Context Protocol (MCP) server for OpenShift cluster health monitoring and 
 │  OpenShift Cluster Health MCP Server                    │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐ │
 │  │ MCP Tools   │  │ MCP Resources│  │ Cache (30s TTL)│ │
-│  │ (6 total)   │  │ (3 total)    │  │                │ │
+│  │ (7 total)   │  │ (3 total)    │  │                │ │
 │  └─────────────┘  └──────────────┘  └────────────────┘ │
 └──────┬──────────────┬──────────────┬──────────────┬─────┘
        │              │              │              │
@@ -128,6 +130,14 @@ helm install mcp-server ./charts/openshift-cluster-health-mcp \
 
 **📖 For detailed installation instructions, version-specific configurations, and troubleshooting, see the [Installation Guide](./docs/INSTALLATION.md).**
 
+**Option 3: Manual Deployment via GitHub Actions**
+
+For pre-release validation or testing against real OpenShift clusters, use the manual deployment workflow:
+- Navigate to [Actions → OpenShift Deploy](https://github.com/tosin2013/openshift-cluster-health-mcp/actions/workflows/openshift-deploy.yml)
+- Provide your OpenShift server URL and authentication token
+- Optionally deploy to your cluster after testing
+- See [Manual OpenShift Deployment Guide](./docs/OPENSHIFT_MANUAL_DEPLOYMENT.md) for detailed instructions
+
 ## Configuration
 
 ### Environment Variables
@@ -141,7 +151,8 @@ helm install mcp-server ./charts/openshift-cluster-health-mcp \
 | `ENABLE_COORDINATION_ENGINE` | Enable Coordination Engine integration | `false` | No |
 | `COORDINATION_ENGINE_URL` | Coordination Engine endpoint | - | If CE enabled |
 | `ENABLE_KSERVE` | Enable KServe integration | `false` | No |
-| `KSERVE_NAMESPACE` | Namespace for KServe models | - | If KServe enabled |
+| `KSERVE_NAMESPACE` | Namespace for KServe models | `self-healing-platform` | If KServe enabled |
+| `KSERVE_PREDICTOR_PORT` | KServe predictor port (8080 for RawDeployment, 80 for Serverless) | `8080` | No |
 | `ENABLE_PROMETHEUS` | Enable Prometheus integration | `false` | No |
 | `PROMETHEUS_URL` | Prometheus endpoint | - | If Prom enabled |
 
@@ -227,6 +238,165 @@ const result = await client.callTool({
   arguments: {}
 });
 console.log("Cluster health:", result);
+```
+
+### Analyze Anomalies Tool
+
+The `analyze-anomalies` tool performs ML-powered anomaly detection on Prometheus metrics. It supports filtering by namespace, deployment, pod, or label selector for targeted analysis.
+
+**Input Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `metric` | string | Yes | The metric name to analyze (e.g., `cpu_usage`, `memory_usage`, `pod_restarts`). |
+| `namespace` | string | No | Kubernetes namespace to scope the analysis. |
+| `deployment` | string | No | Specific deployment name to filter anomalies for. Mutually exclusive with `pod`. |
+| `pod` | string | No | Specific pod name to filter anomalies for (e.g., `etcd-0`, `prometheus-k8s-0`). Mutually exclusive with `deployment`. |
+| `label_selector` | string | No | Kubernetes label selector to filter pods (e.g., `app=flask`). Cannot combine with `deployment` or `pod`. |
+| `time_range` | string | No | Time range for analysis: `1h`, `6h`, `24h`, `7d` (default: `1h`). |
+| `threshold` | number | No | Anomaly score threshold 0.0-1.0 (default: `0.7`). |
+| `model_name` | string | No | KServe model name (default: `predictive-analytics`). |
+
+**Example Usage**:
+
+```bash
+# Analyze CPU anomalies in a specific deployment
+curl -X POST http://localhost:8080/mcp/tools/analyze-anomalies/call \
+  -H 'Content-Type: application/json' \
+  -H 'X-MCP-Session-ID: <session-id>' \
+  -d '{
+    "metric": "cpu_usage",
+    "deployment": "sample-flask-app",
+    "namespace": "self-healing-platform",
+    "time_range": "24h"
+  }'
+
+# Analyze memory anomalies in etcd pods
+curl -X POST http://localhost:8080/mcp/tools/analyze-anomalies/call \
+  -H 'Content-Type: application/json' \
+  -H 'X-MCP-Session-ID: <session-id>' \
+  -d '{
+    "metric": "memory_usage",
+    "pod": "etcd-0",
+    "namespace": "openshift-etcd"
+  }'
+
+# Analyze anomalies using label selector
+curl -X POST http://localhost:8080/mcp/tools/analyze-anomalies/call \
+  -H 'Content-Type: application/json' \
+  -H 'X-MCP-Session-ID: <session-id>' \
+  -d '{
+    "metric": "cpu_usage",
+    "label_selector": "app=monitoring",
+    "time_range": "6h"
+  }'
+```
+
+**Example Response**:
+
+```json
+{
+  "status": "success",
+  "metric": "cpu_usage",
+  "time_range": "24h",
+  "namespace": "self-healing-platform",
+  "deployment": "sample-flask-app",
+  "filter_target": "deployment 'sample-flask-app' in namespace 'self-healing-platform'",
+  "model_used": "predictive-analytics",
+  "anomalies": [
+    {
+      "timestamp": "2026-01-13T14:30:00Z",
+      "metric_name": "cpu_usage",
+      "value": 95.5,
+      "anomaly_score": 0.89,
+      "confidence": 0.92,
+      "severity": "high",
+      "explanation": "Metric 'cpu_usage' shows high anomaly (score: 0.89, confidence: 0.92)."
+    }
+  ],
+  "anomaly_count": 1,
+  "max_score": 0.89,
+  "average_score": 0.89,
+  "message": "Detected 1 anomalies in cpu_usage for deployment 'sample-flask-app' in namespace 'self-healing-platform' over the last 24h (max score: 0.89)",
+  "recommendation": "WARNING: Monitor closely. 1 anomalies detected in cpu_usage."
+}
+```
+
+### Predict Resource Usage Tool
+
+The `predict-resource-usage` tool enables time-specific resource usage forecasting using ML models. It supports predictions for pods, deployments, namespaces, or cluster-wide infrastructure.
+
+**Input Parameters**:
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `target_time` | string | No | Target time in HH:MM format (24-hour). Defaults to current time + 1 hour. |
+| `target_date` | string | No | Target date in YYYY-MM-DD format. Defaults to today. |
+| `namespace` | string | No | Kubernetes namespace to scope the prediction. Supports wildcards (e.g., `openshift-*`). |
+| `deployment` | string | No | Specific deployment name for prediction. |
+| `pod` | string | No | Specific pod name for prediction. |
+| `metric` | string | No | Metric type: `cpu_usage`, `memory_usage`, or `both` (default). |
+| `scope` | string | No | Prediction scope: `pod`, `deployment`, `namespace` (default), or `cluster`. |
+
+**Example Usage**:
+
+```bash
+# Predict CPU usage at 3 PM today for a namespace
+curl -X POST http://localhost:8080/mcp/tools/predict-resource-usage/call \
+  -H 'Content-Type: application/json' \
+  -H 'X-MCP-Session-ID: <session-id>' \
+  -d '{
+    "target_time": "15:00",
+    "namespace": "self-healing-platform",
+    "metric": "cpu_usage",
+    "scope": "namespace"
+  }'
+
+# Predict memory usage for tomorrow morning
+curl -X POST http://localhost:8080/mcp/tools/predict-resource-usage/call \
+  -H 'Content-Type: application/json' \
+  -H 'X-MCP-Session-ID: <session-id>' \
+  -d '{
+    "target_time": "09:00",
+    "target_date": "2026-01-14",
+    "namespace": "openshift-monitoring",
+    "metric": "memory_usage"
+  }'
+
+# Cluster-wide prediction
+curl -X POST http://localhost:8080/mcp/tools/predict-resource-usage/call \
+  -H 'Content-Type: application/json' \
+  -H 'X-MCP-Session-ID: <session-id>' \
+  -d '{
+    "target_time": "00:00",
+    "scope": "cluster",
+    "metric": "both"
+  }'
+```
+
+**Example Response**:
+
+```json
+{
+  "status": "success",
+  "scope": "namespace",
+  "target": "self-healing-platform",
+  "current_metrics": {
+    "cpu_percent": 68.2,
+    "memory_percent": 74.5,
+    "timestamp": "2026-01-13T14:30:00Z"
+  },
+  "predicted_metrics": {
+    "cpu_percent": 74.5,
+    "memory_percent": 81.2,
+    "target_time": "2026-01-13T15:00:00Z",
+    "confidence": 0.92
+  },
+  "trend": "upward",
+  "recommendation": "Memory approaching 85% threshold. Consider monitoring or scaling.",
+  "model_used": "predictive-analytics",
+  "model_version": "v1"
+}
 ```
 
 ## Development
@@ -350,11 +520,26 @@ oc logs <pod-name> | grep -i cache
 
 ## Contributing
 
+We welcome contributions! Please see our [Contributing Guide](.github/CONTRIBUTING.md) for detailed information on:
+
+- Development setup and prerequisites
+- Branch strategy and protection rules
+- Pull request process and requirements
+- Code review requirements
+- Testing guidelines
+- Commit message format
+
+### Quick Contribution Steps
+
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch from `main` (`git checkout -b feature/amazing-feature`)
+3. Make your changes following our [code style guidelines](.github/CONTRIBUTING.md#code-style-guidelines)
+4. Run tests and linters locally (`make test && make lint`)
+5. Commit your changes using [Conventional Commits](.github/CONTRIBUTING.md#commit-message-format)
+6. Push to the branch (`git push origin feature/amazing-feature`)
+7. Open a Pull Request using our [PR template](.github/PULL_REQUEST_TEMPLATE.md)
+
+**Branch Protection**: All main and release branches are protected. See [Branch Protection Rules](docs/BRANCH_PROTECTION.md) for details.
 
 ## License
 

@@ -116,11 +116,16 @@ type TriggerRemediationResponse struct {
 
 // AnalyzeAnomaliesRequest represents a request to analyze anomalies
 type AnalyzeAnomaliesRequest struct {
-	TimeRange          string        `json:"timeRange,omitempty"` // e.g., "1h", "24h"
-	Metrics            []interface{} `json:"metrics"`             // Can be metric names or full metric objects
-	Threshold          *float64      `json:"threshold,omitempty"` // 0.0-1.0
+	TimeRange          string        `json:"timeRange,omitempty"`     // e.g., "1h", "24h"
+	Metrics            []interface{} `json:"metrics,omitempty"`       // Can be metric names or full metric objects
+	Threshold          *float64      `json:"threshold,omitempty"`     // 0.0-1.0
 	IncludePredictions *bool         `json:"includePredictions,omitempty"`
-	Models             []string      `json:"models,omitempty"` // Specify which ML models to use
+	Models             []string      `json:"models,omitempty"`        // Specify which ML models to use
+	ModelName          string        `json:"modelName,omitempty"`     // Primary model name (e.g., "anomaly-detector")
+	Namespace          string        `json:"namespace,omitempty"`     // Kubernetes namespace to scope analysis
+	Deployment         string        `json:"deployment,omitempty"`    // Specific deployment name to filter
+	Pod                string        `json:"pod,omitempty"`           // Specific pod name to filter
+	LabelSelector      string        `json:"labelSelector,omitempty"` // Kubernetes label selector (e.g., "app=flask")
 }
 
 // AnomalyPattern represents a detected anomaly pattern
@@ -364,4 +369,110 @@ func (c *CoordinationEngineClient) HealthCheck(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// PredictResourceUsageRequest represents a request for time-specific resource prediction
+type PredictResourceUsageRequest struct {
+	Hour              int     `json:"hour"`               // Hour of day (0-23)
+	DayOfWeek         int     `json:"day_of_week"`        // Day of week (0=Monday, 6=Sunday)
+	CPURollingMean    float64 `json:"cpu_rolling_mean"`   // Current CPU rolling mean
+	MemoryRollingMean float64 `json:"memory_rolling_mean"` // Current memory rolling mean
+	Namespace         string  `json:"namespace,omitempty"` // Target namespace (optional)
+	Deployment        string  `json:"deployment,omitempty"` // Target deployment (optional)
+	Pod               string  `json:"pod,omitempty"`       // Target pod (optional)
+	Scope             string  `json:"scope,omitempty"`     // Scope: pod, deployment, namespace, cluster
+}
+
+// PredictResourceUsageResponse represents the prediction response (public interface)
+type PredictResourceUsageResponse struct {
+	Status             string  `json:"status"`
+	PredictedCPU       float64 `json:"predicted_cpu_percent"`
+	PredictedMemory    float64 `json:"predicted_memory_percent"`
+	CurrentCPU         float64 `json:"current_cpu_percent"`         // From Prometheus via CE
+	CurrentMemory      float64 `json:"current_memory_percent"`      // From Prometheus via CE
+	Confidence         float64 `json:"confidence"`
+	Trend              string  `json:"trend"`       // upward, downward, stable
+	ModelUsed          string  `json:"model_used"`
+	ModelVersion       string  `json:"model_version,omitempty"`
+	Recommendation     string  `json:"recommendation,omitempty"`
+	PredictedTimestamp string  `json:"predicted_timestamp,omitempty"`
+}
+
+// coordinationEnginePredictResponse represents the actual nested response from coordination engine
+type coordinationEnginePredictResponse struct {
+	Status      string `json:"status"`
+	Scope       string `json:"scope"`
+	Target      string `json:"target"`
+	Predictions struct {
+		CPUPercent    float64 `json:"cpu_percent"`
+		MemoryPercent float64 `json:"memory_percent"`
+	} `json:"predictions"`
+	ModelInfo struct {
+		Name       string  `json:"name"`
+		Version    string  `json:"version"`
+		Confidence float64 `json:"confidence"`
+	} `json:"model_info"`
+	CurrentMetrics struct {
+		CPURollingMean    float64 `json:"cpu_rolling_mean"`
+		MemoryRollingMean float64 `json:"memory_rolling_mean"`
+		Timestamp         string  `json:"timestamp"`
+	} `json:"current_metrics"`
+	TargetTime struct {
+		Hour         int    `json:"hour"`
+		DayOfWeek    int    `json:"day_of_week"`
+		ISOTimestamp string `json:"iso_timestamp"`
+	} `json:"target_time"`
+	Trend          string `json:"trend,omitempty"`
+	Recommendation string `json:"recommendation,omitempty"`
+}
+
+// PredictResourceUsage calls the coordination engine's /api/v1/predict endpoint
+// for time-specific resource usage forecasting
+func (c *CoordinationEngineClient) PredictResourceUsage(ctx context.Context, req *PredictResourceUsageRequest) (*PredictResourceUsageResponse, error) {
+	url := fmt.Sprintf("%s/api/v1/predict", c.baseURL)
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("prediction failed (code %d): %s", resp.StatusCode, string(body))
+	}
+
+	// Parse the nested response from coordination engine
+	var ceResp coordinationEnginePredictResponse
+	if err := json.NewDecoder(resp.Body).Decode(&ceResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	// Convert to the public response format
+	result := &PredictResourceUsageResponse{
+		Status:             ceResp.Status,
+		PredictedCPU:       ceResp.Predictions.CPUPercent,
+		PredictedMemory:    ceResp.Predictions.MemoryPercent,
+		CurrentCPU:         ceResp.CurrentMetrics.CPURollingMean,    // Use Prometheus data from CE
+		CurrentMemory:      ceResp.CurrentMetrics.MemoryRollingMean, // Use Prometheus data from CE
+		Confidence:         ceResp.ModelInfo.Confidence,
+		Trend:              ceResp.Trend,
+		ModelUsed:          ceResp.ModelInfo.Name,
+		ModelVersion:       ceResp.ModelInfo.Version,
+		Recommendation:     ceResp.Recommendation,
+		PredictedTimestamp: ceResp.TargetTime.ISOTimestamp,
+	}
+
+	return result, nil
 }

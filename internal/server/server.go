@@ -71,12 +71,13 @@ func NewMCPServer(config *Config) (*MCPServer, error) {
 	var kserveClient *clients.KServeClient
 	if config.EnableKServe {
 		kserveClient = clients.NewKServeClient(clients.KServeConfig{
-			Namespace:  config.KServeNamespace,
-			Timeout:    config.RequestTimeout,
-			Enabled:    true,
-			RestConfig: k8sClient.GetConfig(), // Pass Kubernetes config for CRD access
+			Namespace:     config.KServeNamespace,
+			PredictorPort: config.KServePredictorPort,
+			Timeout:       config.RequestTimeout,
+			Enabled:       true,
+			RestConfig:    k8sClient.GetConfig(), // Pass Kubernetes config for CRD access
 		})
-		log.Printf("Initialized KServe client for namespace: %s", config.KServeNamespace)
+		log.Printf("Initialized KServe client for namespace: %s (predictor port: %d)", config.KServeNamespace, config.KServePredictorPort)
 	} else {
 		log.Printf("KServe integration disabled (use ENABLE_KSERVE=true to enable)")
 	}
@@ -138,6 +139,10 @@ func (s *MCPServer) registerTools() error {
 	listPodsTool := tools.NewListPodsTool(s.k8sClient)
 	s.registerTool(listPodsTool)
 
+	// Register calculate-pod-capacity tool (capacity planning)
+	calculatePodCapacityTool := tools.NewCalculatePodCapacityTool(s.k8sClient)
+	s.registerTool(calculatePodCapacityTool)
+
 	// Register Coordination Engine tools if enabled
 	if s.ceClient != nil {
 		listIncidentsTool := tools.NewListIncidentsTool(s.ceClient)
@@ -153,15 +158,33 @@ func (s *MCPServer) registerTools() error {
 		// NEW: Create incident tool
 		createIncidentTool := tools.NewCreateIncidentTool(s.ceClient)
 		s.registerTool(createIncidentTool)
+
+		// NEW: Predict resource usage tool (time-specific forecasting)
+		predictResourceUsageTool := tools.NewPredictResourceUsageTool(s.ceClient, s.k8sClient)
+		s.registerTool(predictResourceUsageTool)
+
+		// NEW: Analyze scaling impact tool (capacity planning)
+		analyzeScalingImpactTool := tools.NewAnalyzeScalingImpactTool(s.ceClient, s.k8sClient)
+		s.registerTool(analyzeScalingImpactTool)
 	} else {
 		log.Printf("Skipping Coordination Engine tools (not enabled)")
 	}
 
 	// Register KServe tools if enabled
-	if s.kserve != nil {
-		analyzeAnomaliesTool := tools.NewAnalyzeAnomaliesTool(s.kserve)
+	if s.kserve != nil && s.ceClient != nil {
+		// analyze-anomalies requires both KServe and Coordination Engine
+		// The Coordination Engine handles feature engineering (45 features) and calls KServe
+		analyzeAnomaliesTool := tools.NewAnalyzeAnomaliesTool(s.kserve, s.ceClient)
 		s.registerTool(analyzeAnomaliesTool)
 
+		getModelStatusTool := tools.NewGetModelStatusTool(s.kserve)
+		s.registerTool(getModelStatusTool)
+
+		listModelsTool := tools.NewListModelsTool(s.kserve)
+		s.registerTool(listModelsTool)
+	} else if s.kserve != nil && s.ceClient == nil {
+		log.Printf("Skipping analyze-anomalies tool (requires Coordination Engine for feature engineering)")
+		// Register other KServe tools that don't require Coordination Engine
 		getModelStatusTool := tools.NewGetModelStatusTool(s.kserve)
 		s.registerTool(getModelStatusTool)
 

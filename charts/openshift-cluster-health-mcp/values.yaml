@@ -122,6 +122,7 @@ integrations:
   kserve:
     enabled: false  # Enable when KServe is deployed
     namespace: self-healing-platform
+    predictorPort: 8080  # 8080 for RawDeployment mode, 80 for Serverless mode
     timeout: 15s
     models:
       - name: predictive-analytics

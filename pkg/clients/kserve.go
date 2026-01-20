@@ -19,6 +19,7 @@ import (
 // KServeClient provides client for KServe InferenceService models
 type KServeClient struct {
 	namespace     string
+	predictorPort int
 	httpClient    *http.Client
 	dynamicClient dynamic.Interface
 	restConfig    *rest.Config
@@ -27,10 +28,11 @@ type KServeClient struct {
 
 // KServeConfig holds configuration for KServe client
 type KServeConfig struct {
-	Namespace  string
-	Timeout    time.Duration
-	Enabled    bool
-	RestConfig *rest.Config // Kubernetes rest config for accessing CRDs
+	Namespace     string
+	PredictorPort int           // Port for KServe predictor (default: 8080 for RawDeployment)
+	Timeout       time.Duration
+	Enabled       bool
+	RestConfig    *rest.Config // Kubernetes rest config for accessing CRDs
 }
 
 // NewKServeClient creates a new KServe client
@@ -40,8 +42,15 @@ func NewKServeClient(config KServeConfig) *KServeClient {
 		timeout = 15 * time.Second
 	}
 
+	// Default port for KServe RawDeployment mode is 8080
+	predictorPort := config.PredictorPort
+	if predictorPort == 0 {
+		predictorPort = 8080
+	}
+
 	client := &KServeClient{
-		namespace: config.Namespace,
+		namespace:     config.Namespace,
+		predictorPort: predictorPort,
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -203,10 +212,11 @@ func (c *KServeClient) PredictFailures(ctx context.Context, req *PredictiveAnaly
 // getModelURL constructs the KServe model URL
 func (c *KServeClient) getModelURL(modelName, operation string) string {
 	// KServe v2 protocol endpoint (KServe 0.11+)
-	// Format: http://{model-name}-predictor.{namespace}.svc.cluster.local/v2/models/{model-name}/{operation}
-	// Note: Port 80 is default for ClusterIP services, no need to specify
-	return fmt.Sprintf("http://%s-predictor.%s.svc.cluster.local/v2/models/%s/%s",
-		modelName, c.namespace, modelName, operation)
+	// Format: http://{model-name}-predictor.{namespace}.svc.cluster.local:{port}/v2/models/model/{operation}
+	// Port 8080 is the default for RawDeployment mode, port 80 for Serverless mode
+	// Note: KServe RawDeployment uses literal "model" in the URL path, not the model name
+	return fmt.Sprintf("http://%s-predictor.%s.svc.cluster.local:%d/v2/models/model/%s",
+		modelName, c.namespace, c.predictorPort, operation)
 }
 
 // callInference makes an HTTP call to the KServe inference endpoint
@@ -449,8 +459,10 @@ func (c *KServeClient) HealthCheck(ctx context.Context, modelName string) error 
 	}
 
 	// KServe health endpoint (v2 protocol)
-	url := fmt.Sprintf("http://%s-predictor.%s.svc.cluster.local/v2/models/%s",
-		modelName, c.namespace, modelName)
+	// Port 8080 is the default for RawDeployment mode, port 80 for Serverless mode
+	// Note: KServe RawDeployment uses literal "model" in the URL path, not the model name
+	url := fmt.Sprintf("http://%s-predictor.%s.svc.cluster.local:%d/v2/models/model",
+		modelName, c.namespace, c.predictorPort)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -496,8 +508,10 @@ func (c *KServeClient) GetModelStatus(ctx context.Context, modelName string) (*M
 	}
 
 	// KServe v2 model metadata endpoint
-	url := fmt.Sprintf("http://%s-predictor.%s.svc.cluster.local/v2/models/%s",
-		modelName, c.namespace, modelName)
+	// Port 8080 is the default for RawDeployment mode, port 80 for Serverless mode
+	// Note: KServe RawDeployment uses literal "model" in the URL path, not the model name
+	url := fmt.Sprintf("http://%s-predictor.%s.svc.cluster.local:%d/v2/models/model",
+		modelName, c.namespace, c.predictorPort)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -558,8 +572,10 @@ func (c *KServeClient) Predict(ctx context.Context, modelName string, instances 
 	}
 
 	// KServe v1 prediction endpoint (more widely compatible)
-	url := fmt.Sprintf("http://%s-predictor.%s.svc.cluster.local/v1/models/%s:predict",
-		modelName, c.namespace, modelName)
+	// Port 8080 is the default for RawDeployment mode, port 80 for Serverless mode
+	// Note: KServe RawDeployment uses literal "model" in the URL path, not the model name
+	url := fmt.Sprintf("http://%s-predictor.%s.svc.cluster.local:%d/v1/models/model:predict",
+		modelName, c.namespace, c.predictorPort)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {

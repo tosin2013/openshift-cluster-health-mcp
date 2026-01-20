@@ -50,6 +50,8 @@ spec:
         {{- if .Values.integrations.kserve.enabled }}
         - name: KSERVE_NAMESPACE
           value: {{ .Values.integrations.kserve.namespace | quote }}
+        - name: KSERVE_PREDICTOR_PORT
+          value: {{ .Values.integrations.kserve.predictorPort | default 8080 | quote }}
         - name: ENABLE_KSERVE
           value: "true"
         {{- end }}
