@@ -46,7 +46,7 @@ func main() {
 	for {
 		resp, err := client.Get(url)
 		if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			fmt.Printf("Service at %s is ready! (HTTP %d)\n", url, resp.StatusCode)
 			os.Exit(0)
 		}
@@ -56,7 +56,7 @@ func main() {
 			fmt.Printf("Service at %s not ready: %v\n", url, err)
 		} else {
 			fmt.Printf("Service at %s not ready: HTTP %d\n", url, resp.StatusCode)
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 
 		retries++
