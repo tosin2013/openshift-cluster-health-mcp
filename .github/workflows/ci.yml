@@ -154,25 +154,27 @@ jobs:
           echo "API Server: $API_SERVER"
 
           # Test healthcheck against Kubernetes API health endpoint with bearer token
-          # The K8s API /healthz endpoint should work with valid token
-          ./bin/healthcheck "${API_SERVER}/healthz" \
+          # Note: URL must come AFTER flags for Go's flag package
+          ./bin/healthcheck \
             --bearer-token="${{ env.OPENSHIFT_TOKEN }}" \
             --insecure-skip-verify \
             --max-retries=3 \
             --timeout=10s \
-            --interval=2s && {
+            --interval=2s \
+            "${API_SERVER}/healthz" && {
             echo "✓ healthcheck with bearer token works against K8s API"
           } || {
             echo "⚠️  healthcheck against K8s API failed (may be expected for some endpoints)"
           }
 
           # Test against a basic livez endpoint
-          ./bin/healthcheck "${API_SERVER}/livez" \
+          ./bin/healthcheck \
             --bearer-token="${{ env.OPENSHIFT_TOKEN }}" \
             --insecure-skip-verify \
             --max-retries=3 \
             --timeout=10s \
-            --interval=2s && {
+            --interval=2s \
+            "${API_SERVER}/livez" && {
             echo "✓ healthcheck with bearer token works against K8s livez"
           } || {
             echo "⚠️  healthcheck against K8s livez failed"
