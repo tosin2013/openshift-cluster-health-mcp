@@ -208,7 +208,7 @@ func TestHealthCheckWithBearerToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Verify
 	expectedAuth := "Bearer " + expectedToken
@@ -249,7 +249,7 @@ func TestHealthCheckWithCustomHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Verify
 	if receivedHeaders["X-Custom-1"] != "value1" {
@@ -265,7 +265,9 @@ func TestHealthCheckHTTPS(t *testing.T) {
 	// Create an HTTPS test server (with self-signed cert)
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		if _, err := w.Write([]byte("OK")); err != nil {
+			t.Logf("Failed to write response: %v", err)
+		}
 	}))
 	defer server.Close()
 
@@ -281,7 +283,7 @@ func TestHealthCheckHTTPS(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200, got %d", resp.StatusCode)
