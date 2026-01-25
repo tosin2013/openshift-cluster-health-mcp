@@ -2,7 +2,7 @@
 
 ## Status
 
-**AMENDED** - 2026-01-06
+**IMPLEMENTED** - 2026-01-06
 
 **Original**: ACCEPTED - 2025-12-09
 

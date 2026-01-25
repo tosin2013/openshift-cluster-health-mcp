@@ -2,7 +2,7 @@
 
 ## Status
 
-**ACCEPTED** - 2025-12-17
+**IMPLEMENTED** - 2025-12-17
 
 ## Context
 
