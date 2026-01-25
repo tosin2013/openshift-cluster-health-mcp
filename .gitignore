@@ -67,3 +67,5 @@ build/
 
 # Auto-generated MCP server context (added automatically)
 .mcp-server-context.md
+cmd/coordination-engine/coordination-engine
+*.exe
