@@ -125,15 +125,19 @@ type AnalyzeAnomaliesRequest struct {
 
 // AnomalyPattern represents a detected anomaly pattern
 type AnomalyPattern struct {
-	Metric      string  `json:"metric"`
-	Type        string  `json:"type"`     // statistical_outlier, threshold_exceeded, trend_anomaly
-	Severity    string  `json:"severity"` // low, medium, high, critical
-	Score       float64 `json:"score"`    // Confidence score
-	Timestamp   string  `json:"timestamp"`
-	Value       float64 `json:"value"`
-	ExpectedMin float64 `json:"expected_min"`
-	ExpectedMax float64 `json:"expected_max"`
-	Model       string  `json:"model"` // Which model detected it
+	Metric            string             `json:"metric"`
+	Type              string             `json:"type"`               // statistical_outlier, threshold_exceeded, trend_anomaly
+	Severity          string             `json:"severity"`           // low, medium, high, critical
+	Score             float64            `json:"anomaly_score"`      // Anomaly score from Coordination Engine
+	Confidence        float64            `json:"confidence"`         // Confidence level of the detection
+	Timestamp         string             `json:"timestamp"`
+	Value             float64            `json:"value"`
+	ExpectedMin       float64            `json:"expected_min"`
+	ExpectedMax       float64            `json:"expected_max"`
+	Model             string             `json:"model"`              // Which model detected it
+	Metrics           map[string]float64 `json:"metrics"`            // Detailed metrics from analysis
+	Explanation       string             `json:"explanation"`        // Human-readable explanation
+	RecommendedAction string             `json:"recommended_action"` // Suggested remediation action
 }
 
 // Alert represents an alert from anomaly detection
