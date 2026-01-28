@@ -211,9 +211,9 @@ func (t *AnalyzeAnomaliesTool) Execute(ctx context.Context, args map[string]inte
 			MetricName:   pattern.Metric,
 			Value:        pattern.Value,
 			AnomalyScore: pattern.Score,
-			Confidence:   pattern.Score, // Use score as confidence if not separately provided
+			Confidence:   pattern.Confidence, // Use confidence from Coordination Engine response
 			Severity:     pattern.Severity,
-			Explanation:  generateExplanation(pattern.Metric, pattern.Score, pattern.Score),
+			Explanation:  generateExplanation(pattern.Metric, pattern.Score, pattern.Confidence),
 		}
 		anomalies = append(anomalies, anomaly)
 		totalScore += pattern.Score
