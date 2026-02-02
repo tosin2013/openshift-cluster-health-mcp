@@ -512,7 +512,7 @@ jobs:
 **Dependencies**:
 ```go
 // go.mod
-module github.com/[your-org]/openshift-cluster-health-mcp
+module github.com/KubeHeal/openshift-cluster-health-mcp
 
 go 1.21
 

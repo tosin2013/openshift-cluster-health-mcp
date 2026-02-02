@@ -13,6 +13,6 @@ keywords:
   - cluster-health
 maintainers:
   - name: OpenShift AI Ops Team
-home: https://github.com/[your-org]/openshift-cluster-health-mcp
+home: https://github.com/KubeHeal/openshift-cluster-health-mcp
 sources:
-  - https://github.com/[your-org]/openshift-cluster-health-mcp
+  - https://github.com/KubeHeal/openshift-cluster-health-mcp

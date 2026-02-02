@@ -462,8 +462,8 @@ integrations:
 ## References
 
 - [OpenShift Cluster Health MCP PRD](../../PRD.md) - Phase 1 requirements
-- [OpenShift AI Ops Platform](https://github.com/[your-org]/openshift-aiops-platform) - Current platform
-- [Coordination Engine Source](https://github.com/[your-org]/openshift-aiops-platform/tree/main/src/coordination-engine)
+- [OpenShift AI Ops Platform](https://github.com/KubeHeal/openshift-aiops-platform) - Current platform
+- [Coordination Engine Source](https://github.com/KubeHeal/openshift-aiops-platform/tree/main/src/coordination-engine)
 
 ## Success Metrics
 

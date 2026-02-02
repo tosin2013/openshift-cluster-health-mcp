@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/capacity"
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/capacity"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 )
 
 // CalculatePodCapacityTool provides MCP tool for calculating namespace/cluster pod capacity

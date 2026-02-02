@@ -2,8 +2,8 @@
 
 Model Context Protocol (MCP) server for OpenShift cluster health monitoring and AI Ops integration. Provides real-time cluster health data, incident management, and ML-powered anomaly detection through a standardized MCP interface.
 
-![CI Status](https://github.com/openshift-aiops/openshift-cluster-health-mcp/workflows/CI/badge.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/openshift-aiops/openshift-cluster-health-mcp)](https://goreportcard.com/report/github.com/openshift-aiops/openshift-cluster-health-mcp)
+![CI Status](https://github.com/KubeHeal/openshift-cluster-health-mcp/workflows/CI/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/KubeHeal/openshift-cluster-health-mcp)](https://goreportcard.com/report/github.com/KubeHeal/openshift-cluster-health-mcp)
 
 ## Features
 
@@ -72,7 +72,7 @@ Model Context Protocol (MCP) server for OpenShift cluster health monitoring and 
 
 ```bash
 # Clone repository
-git clone https://github.com/openshift-aiops/openshift-cluster-health-mcp.git
+git clone https://github.com/KubeHeal/openshift-cluster-health-mcp.git
 cd openshift-cluster-health-mcp
 
 # Install dependencies
@@ -523,8 +523,8 @@ Apache License 2.0
 
 ## Support
 
-- Issues: [GitHub Issues](https://github.com/openshift-aiops/openshift-cluster-health-mcp/issues)
-- Discussions: [GitHub Discussions](https://github.com/openshift-aiops/openshift-cluster-health-mcp/discussions)
+- Issues: [GitHub Issues](https://github.com/KubeHeal/openshift-cluster-health-mcp/issues)
+- Discussions: [GitHub Discussions](https://github.com/KubeHeal/openshift-cluster-health-mcp/discussions)
 - Documentation: [docs/](./docs/)
 
 ## Acknowledgments

@@ -67,11 +67,11 @@ Now we'll store those credentials securely in GitHub.
 
 **Go to your repository secrets page:**
 ```
-https://github.com/tosin2013/openshift-cluster-health-mcp/settings/secrets/actions
+https://github.com/KubeHeal/openshift-cluster-health-mcp/settings/secrets/actions
 ```
 
 Or navigate manually:
-1. Go to your repo: https://github.com/tosin2013/openshift-cluster-health-mcp
+1. Go to your repo: https://github.com/KubeHeal/openshift-cluster-health-mcp
 2. Click **Settings** (top navigation)
 3. Click **Secrets and variables** → **Actions** (left sidebar)
 
@@ -111,7 +111,7 @@ git push origin main
 ```
 
 **Watch it run:**
-1. Go to: https://github.com/tosin2013/openshift-cluster-health-mcp/actions
+1. Go to: https://github.com/KubeHeal/openshift-cluster-health-mcp/actions
 2. Click on the latest workflow run
 3. Watch the steps execute
 

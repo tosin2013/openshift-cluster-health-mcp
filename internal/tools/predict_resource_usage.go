@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 )
 
 // PredictResourceUsageTool provides MCP tool for time-specific resource usage predictions

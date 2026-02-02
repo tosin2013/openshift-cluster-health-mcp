@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 )
 
 // ListIncidentsTool provides MCP tool for listing incidents from Coordination Engine

@@ -8,8 +8,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/cache"
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/cache"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 )
 
 // NodesResource provides the cluster://nodes MCP resource

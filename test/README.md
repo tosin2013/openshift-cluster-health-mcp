@@ -400,5 +400,5 @@ When adding new MCP server features:
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/openshift-aiops/openshift-cluster-health-mcp/issues
-- Documentation: https://github.com/openshift-aiops/openshift-cluster-health-mcp/tree/main/docs
+- GitHub Issues: https://github.com/KubeHeal/openshift-cluster-health-mcp/issues
+- Documentation: https://github.com/KubeHeal/openshift-cluster-health-mcp/tree/main/docs
