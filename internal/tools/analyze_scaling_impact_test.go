@@ -735,7 +735,7 @@ func TestAnalyzeScalingImpactTool_Execute_Integration(t *testing.T) {
 	/*
 		import (
 			"context"
-			"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+			"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 		)
 
 		k8sClient, err := clients.NewK8sClient(nil)
