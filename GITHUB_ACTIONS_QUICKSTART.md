@@ -77,7 +77,7 @@ eyJhbGciOiJSUzI1NiIsImtpZCI6...
 
 ### Step 2: Add Secrets to GitHub (1 minute) - OPTIONAL
 
-1. Go to: https://github.com/tosin2013/openshift-cluster-health-mcp/settings/secrets/actions
+1. Go to: https://github.com/KubeHeal/openshift-cluster-health-mcp/settings/secrets/actions
 
 2. Click **"New repository secret"**
 
@@ -101,7 +101,7 @@ git push origin main
 
 ## Verify It's Working
 
-1. Go to: https://github.com/tosin2013/openshift-cluster-health-mcp/actions
+1. Go to: https://github.com/KubeHeal/openshift-cluster-health-mcp/actions
 
 2. Click on the latest workflow run
 

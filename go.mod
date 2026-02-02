@@ -1,4 +1,4 @@
-module github.com/openshift-aiops/openshift-cluster-health-mcp
+module github.com/KubeHeal/openshift-cluster-health-mcp
 
 go 1.24.0
 

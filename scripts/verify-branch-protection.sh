@@ -23,7 +23,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Repository details
-REPO="tosin2013/openshift-cluster-health-mcp"
+REPO="KubeHeal/openshift-cluster-health-mcp"
 
 # Expected status checks
 EXPECTED_CHECKS=(

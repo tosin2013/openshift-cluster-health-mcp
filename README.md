@@ -2,8 +2,8 @@
 
 Model Context Protocol (MCP) server for OpenShift cluster health monitoring and AI Ops integration. Provides real-time cluster health data, incident management, and ML-powered anomaly detection through a standardized MCP interface.
 
-![CI Status](https://github.com/openshift-aiops/openshift-cluster-health-mcp/workflows/CI/badge.svg)
-[![Go Report Card](https://goreportcard.com/badge/github.com/openshift-aiops/openshift-cluster-health-mcp)](https://goreportcard.com/report/github.com/openshift-aiops/openshift-cluster-health-mcp)
+![CI Status](https://github.com/KubeHeal/openshift-cluster-health-mcp/workflows/CI/badge.svg)
+[![Go Report Card](https://goreportcard.com/badge/github.com/KubeHeal/openshift-cluster-health-mcp)](https://goreportcard.com/report/github.com/KubeHeal/openshift-cluster-health-mcp)
 ![Branch Protection](https://img.shields.io/badge/branch-protected-green)
 
 ## Features
@@ -73,7 +73,7 @@ Model Context Protocol (MCP) server for OpenShift cluster health monitoring and 
 
 ```bash
 # Clone repository
-git clone https://github.com/openshift-aiops/openshift-cluster-health-mcp.git
+git clone https://github.com/KubeHeal/openshift-cluster-health-mcp.git
 cd openshift-cluster-health-mcp
 
 # Install dependencies
@@ -133,7 +133,7 @@ helm install mcp-server ./charts/openshift-cluster-health-mcp \
 **Option 3: Manual Deployment via GitHub Actions**
 
 For pre-release validation or testing against real OpenShift clusters, use the manual deployment workflow:
-- Navigate to [Actions → OpenShift Deploy](https://github.com/tosin2013/openshift-cluster-health-mcp/actions/workflows/openshift-deploy.yml)
+- Navigate to [Actions → OpenShift Deploy](https://github.com/KubeHeal/openshift-cluster-health-mcp/actions/workflows/openshift-deploy.yml)
 - Provide your OpenShift server URL and authentication token
 - Optionally deploy to your cluster after testing
 - See [Manual OpenShift Deployment Guide](./docs/OPENSHIFT_MANUAL_DEPLOYMENT.md) for detailed instructions
@@ -547,8 +547,8 @@ Apache License 2.0
 
 ## Support
 
-- Issues: [GitHub Issues](https://github.com/openshift-aiops/openshift-cluster-health-mcp/issues)
-- Discussions: [GitHub Discussions](https://github.com/openshift-aiops/openshift-cluster-health-mcp/discussions)
+- Issues: [GitHub Issues](https://github.com/KubeHeal/openshift-cluster-health-mcp/issues)
+- Discussions: [GitHub Discussions](https://github.com/KubeHeal/openshift-cluster-health-mcp/discussions)
 - Documentation: [docs/](./docs/)
 
 ## Acknowledgments

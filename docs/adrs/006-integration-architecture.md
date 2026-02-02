@@ -988,7 +988,7 @@ var (
 ## References
 
 - [OpenShift Cluster Health MCP PRD](../../PRD.md)
-- [Coordination Engine API Documentation](https://github.com/[your-org]/openshift-aiops-platform/blob/main/src/coordination-engine/README.md)
+- [Coordination Engine API Documentation](https://github.com/KubeHeal/openshift-aiops-platform/blob/main/src/coordination-engine/README.md)
 - [KServe V2 Inference Protocol](https://kserve.github.io/website/modelserving/data_plane/v2_protocol/)
 - [KServe V1 Protocol (deprecated)](https://kserve.github.io/website/modelserving/v1beta1/serving_runtime/)
 - [Prometheus HTTP API](https://prometheus.io/docs/prometheus/latest/querying/api/)

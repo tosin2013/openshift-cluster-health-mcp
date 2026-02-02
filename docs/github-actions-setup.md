@@ -38,7 +38,7 @@ Example: `sha256~YOUR_TOKEN_WILL_BE_MUCH_LONGER_THAN_THIS_EXAMPLE`
 
 ## Step 2: Add Secrets to GitHub Repository
 
-1. Navigate to your GitHub repository: https://github.com/tosin2013/openshift-cluster-health-mcp
+1. Navigate to your GitHub repository: https://github.com/KubeHeal/openshift-cluster-health-mcp
 
 2. Click **Settings** (top menu)
 

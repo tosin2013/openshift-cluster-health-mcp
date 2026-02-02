@@ -28,7 +28,7 @@ The `openshift-deploy.yml` workflow allows maintainers to:
 
 ### Step 1: Trigger Workflow
 
-1. Go to [Actions → OpenShift Deploy](https://github.com/tosin2013/openshift-cluster-health-mcp/actions/workflows/openshift-deploy.yml)
+1. Go to [Actions → OpenShift Deploy](https://github.com/KubeHeal/openshift-cluster-health-mcp/actions/workflows/openshift-deploy.yml)
 2. Click **Run workflow**
 3. Fill in the inputs:
    - **openshift_server**: Your cluster API URL (e.g., `https://api.cluster.example.com:6443`)

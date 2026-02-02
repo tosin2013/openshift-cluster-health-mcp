@@ -2,7 +2,7 @@
 
 ## Summary
 
-**PR**: https://github.com/tosin2013/openshift-cluster-health-mcp/pull/52
+**PR**: https://github.com/KubeHeal/openshift-cluster-health-mcp/pull/52
 **Title**: fix: anomaly detection integration with coordination-engine
 **Status**: Ready for merge (all CI checks passed)
 **Blocking**: Requires 1 approval (branch protection on `main`)

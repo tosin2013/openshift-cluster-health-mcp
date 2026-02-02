@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/cache"
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/cache"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 )
 
 // IncidentsResource provides the cluster://incidents MCP resource

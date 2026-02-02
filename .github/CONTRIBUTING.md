@@ -38,7 +38,7 @@ Before contributing, ensure you have the following installed:
 
 3. **Add upstream remote**:
    ```bash
-   git remote add upstream https://github.com/tosin2013/openshift-cluster-health-mcp.git
+   git remote add upstream https://github.com/KubeHeal/openshift-cluster-health-mcp.git
    ```
 
 4. **Install dependencies**:
