@@ -386,7 +386,7 @@ http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 
 - [OpenShift Cluster Health MCP PRD](../../PRD.md)
 - [containers/kubernetes-mcp-server Architecture](https://github.com/containers/kubernetes-mcp-server)
-- [Parent Platform ADR-015](https://github.com/[your-org]/openshift-aiops-platform/blob/main/docs/adrs/015-service-separation-mcp-vs-rest-api.md)
+- [Parent Platform ADR-015](https://github.com/KubeHeal/openshift-aiops-platform/blob/main/docs/adrs/015-service-separation-mcp-vs-rest-api.md)
 - [12-Factor App Principles](https://12factor.net/)
 
 ## Risk Mitigation

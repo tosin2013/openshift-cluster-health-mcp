@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/cache"
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/cache"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 )
 
 func TestIncidentsResource_URI(t *testing.T) {

@@ -220,7 +220,7 @@ For development with version-specific dependencies:
 
 ```bash
 # Clone the repository
-git clone https://github.com/tosin2013/openshift-cluster-health-mcp.git
+git clone https://github.com/KubeHeal/openshift-cluster-health-mcp.git
 cd openshift-cluster-health-mcp
 
 # Check out the branch matching your OpenShift version
@@ -395,6 +395,6 @@ After successful installation:
 
 ## Support
 
-- **Issues**: https://github.com/tosin2013/openshift-cluster-health-mcp/issues
-- **Documentation**: https://github.com/tosin2013/openshift-cluster-health-mcp/tree/main/docs
+- **Issues**: https://github.com/KubeHeal/openshift-cluster-health-mcp/issues
+- **Documentation**: https://github.com/KubeHeal/openshift-cluster-health-mcp/tree/main/docs
 - **Container Images**: https://quay.io/repository/takinosh/openshift-cluster-health-mcp

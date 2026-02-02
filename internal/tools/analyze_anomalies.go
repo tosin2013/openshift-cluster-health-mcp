@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 )
 
 // AnalyzeAnomaliesTool provides MCP tool for ML-powered anomaly detection

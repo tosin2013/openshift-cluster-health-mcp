@@ -603,7 +603,7 @@ func TestStdioTransport(t *testing.T) {
 
 - [MCP Specification - Transports](https://spec.modelcontextprotocol.io/specification/architecture/#transports)
 - [OpenShift Lightspeed Documentation](https://docs.openshift.com/lightspeed/)
-- [Parent Platform ADR-016](https://github.com/[your-org]/openshift-aiops-platform/blob/main/docs/adrs/016-openshift-lightspeed-olsconfig-integration.md)
+- [Parent Platform ADR-016](https://github.com/KubeHeal/openshift-aiops-platform/blob/main/docs/adrs/016-openshift-lightspeed-olsconfig-integration.md)
 - [OpenShift Cluster Health MCP PRD](../../PRD.md)
 
 ## Risk Mitigation

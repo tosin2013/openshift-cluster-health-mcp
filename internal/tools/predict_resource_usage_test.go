@@ -655,7 +655,7 @@ func TestPredictResourceUsageTool_Execute_Integration(t *testing.T) {
 	// Example of how the full integration test would work:
 	/*
 		import (
-			"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+			"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 		)
 
 		k8sClient, err := clients.NewK8sClient(nil)

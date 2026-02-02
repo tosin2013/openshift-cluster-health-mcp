@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/cache"
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/pkg/clients"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/cache"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/pkg/clients"
 )
 
 func setupTestServer(t *testing.T) *MCPServer {

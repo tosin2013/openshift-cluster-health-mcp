@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/openshift-aiops/openshift-cluster-health-mcp/internal/server"
+	"github.com/KubeHeal/openshift-cluster-health-mcp/internal/server"
 )
 
 var (
